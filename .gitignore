@@ -1,0 +1,13 @@
+.venv/
+output/
+*.mp3
+*.wav
+*.m4a
+*.ogg
+*.flac
+*.webm
+*.opus
+*.aac
+__pycache__/
+.pytest_cache/
+*.pyc
