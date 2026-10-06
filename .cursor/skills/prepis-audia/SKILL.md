@@ -114,6 +114,8 @@ Než nahrávku odešleš, napiš uživateli v odpovědi, kam půjde. U tohoto sk
 
 Jednou týdně projdi sledované podcasty. Seznam odkazů je v [sledovane.txt](sledovane.txt) ve složce skillu. Jeden odkaz na řádek: RSS feed, stránka epizody, Overcast nebo přímý soubor. Řádky s `#` a prázdné řádky přeskoč. Pořad podle názvu nevyhledávej. Když v souboru není žádný odkaz, průchod zastav a napiš, že seznam je prázdný. Nic nestahuj a netvrď, že epizody byly zpracované.
 
+Když uživatel pošle OPML, přepiš `sledovane.txt` adresami z `xmlUrl`. Název pořadu a skupinu nech na řádcích s `#`. Jiné pořady do seznamu nepřidávej.
+
 Už přepsané díly jsou v [zpracovane.txt](zpracovane.txt), jeden `media_url` na řádek. Ty přeskoč.
 
 Pro každý odkaz stáhni díly z posledních 7 dní:

@@ -2,3 +2,34 @@
 # Hodí se RSS feed pořadu, stránka epizody, odkaz na Overcast nebo přímý audiosoubor.
 # Řádek s # a prázdný řádek se přeskakují.
 # Pořad podle názvu skill nevyhledává. Bez odkazu tady týdenní postup nemá co stáhnout.
+# Když uživatel pošle OPML, přepiš tento seznam z atributů xmlUrl a název nech v komentáři.
+
+# Finsko – Veikkausliiga
+# The Finnish Football Show
+https://feed.podbean.com/FinnishFootballShow/feed.xml
+# Napit Edellä
+https://anchor.fm/s/dae9c5c/podcast/rss
+# Nappulakengät
+https://anchor.fm/s/10d65e4c/podcast/rss
+# Seinäjoki Football Supporters Podcast
+https://feed.podbean.com/seinajokifootballpod/feed.xml
+
+# Norsko – Eliteserien
+# Rabona
+https://feed.pod.space/rabona
+# TV 2 – Spiss Vinkel
+https://omny.fm/shows/tv-2-spiss-vinkel/playlists/podcast.rss
+
+# Švédsko – Allsvenskan
+# 90MinSvenskan
+https://feeds.acast.com/public/shows/6441651b7301040011957508
+# Studio Allsvenskan
+https://feeds.acast.com/public/shows/studioallsvenskan
+# Lundh
+https://feeds.acast.com/public/shows/lundh
+# Fotbollsmorgon
+https://feeds.acast.com/public/shows/fotbollsmorgon
+
+# Norsko a Švédsko
+# Nordic Football Podcast
+https://nordicfootballpod.libsyn.com/rss
