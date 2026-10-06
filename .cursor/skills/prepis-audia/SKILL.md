@@ -10,6 +10,19 @@ description: >-
 
 # Přepis audia
 
+## Složka pro všechny projekty
+
+Skill platí ve všech projektech, když leží v `~/.cursor/skills/prepis-audia`. Stejný obsah je v tomto repozitáři v `.cursor/skills/prepis-audia`, aby ho našel agent spuštěný z tohoto projektu.
+
+Kořen skillu je složka, ve které je tento `SKILL.md`. Skripty, `requirements.txt` i `.venv` ber z toho kořene. Cesty `.cursor/skills/...` nepoužívej, v jiném projektu tam skill není.
+
+Stažené audio a přepis ukládej do dočasné složky, ne do stromu cizího projektu:
+
+```bash
+SKILL_DIR="<kořen tohoto skillu>"
+WORK_DIR="${TMPDIR:-/tmp}/prepis-audia"
+```
+
 ## Automatické spuštění
 
 Jakmile je ve zprávě audiosoubor nebo odkaz na podcast, spusť celý postup hned. Neptej se, co z nahrávky získat, a nečekej na další pokyn. Text vedle souboru nebo odkazu je jen doplněk. Shrnutí pořád pokryje celou epizodu.
@@ -30,12 +43,12 @@ Když chybí soubor i odkaz, přepis nespouštěj. Napiš, že je potřeba vlož
 
 Soubor hledej v pracovním prostoru a v přílohách zprávy. Když už tam je, nevyžaduj nové nahrání.
 
-Odkaz předej skriptu [scripts/fetch_audio.py](scripts/fetch_audio.py). Ten uloží jednu epizodu do `output/audio` a na standardní výstup vypíše JSON s cestou, názvem dílu a polem `selection`.
+Odkaz předej skriptu [scripts/fetch_audio.py](scripts/fetch_audio.py). Ten uloží jednu epizodu do `$WORK_DIR/audio` a na standardní výstup vypíše JSON s cestou, názvem dílu a polem `selection`.
 
 ```bash
-.venv/bin/python .cursor/skills/prepis-audia/scripts/fetch_audio.py \
+"$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/fetch_audio.py" \
   VLOZENY_ODKAZ \
-  --output-dir output/audio
+  --output-dir "$WORK_DIR/audio"
 ```
 
 - `direct` nebo `page` znamená soubor z vloženého odkazu nebo ze stránky té epizody.
@@ -43,7 +56,7 @@ Odkaz předej skriptu [scripts/fetch_audio.py](scripts/fetch_audio.py). Ten ulo�
 - `feed_latest` znamená, že odkaz vedl na celý feed. Ve shrnutí napiš název z `episode_title` a že jde o nejnovější díl toho feedu.
 - Když stránka nabízí víc zvuků a není jasné, který je epizoda, skript se zastaví. Předej uživateli jeho hlášku a přepis nespouštěj.
 - Když odkaz zvuk nevydá, typicky přehrávač bez souboru, přihlášení nebo zamčená epizoda, skript se zastaví. Přepis nespouštěj a netvrď, že nahrávka byla zpracovaná.
-- Stažený soubor necommituj. Patří do `output/`, který je v `.gitignore`.
+- Stažený soubor necommituj. Nech ho v `$WORK_DIR`.
 
 ## Nástroj
 
@@ -52,16 +65,16 @@ Přepisuje lokální skript [scripts/transcribe.py](scripts/transcribe.py) model
 Prostředí, pokud ještě není:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r .cursor/skills/prepis-audia/requirements.txt
+python3 -m venv "$SKILL_DIR/.venv"
+"$SKILL_DIR/.venv/bin/pip" install -r "$SKILL_DIR/requirements.txt"
 ```
 
 Spuštění:
 
 ```bash
-.venv/bin/python .cursor/skills/prepis-audia/scripts/transcribe.py \
+"$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/transcribe.py" \
   CESTA_K_AUDIU \
-  --output-dir output/transcripts
+  --output-dir "$WORK_DIR/transcripts"
 ```
 
 Výchozí model je `medium` na CPU, kvantizace `int8`. Nahrávku delší než 10 minut skript sám rozdělí na díly s překryvem 3 sekund, při spojení zahodí duplicity a časy přepočítá vůči začátku původního souboru. Výstupem je JSON a text s časovými značkami. Úplný přepis uživateli dej jen když o něj požádá; do shrnutí patří jen relevantní citace s časy.
@@ -75,9 +88,9 @@ Externí API je až záloha, a jen když lokální běh selže a v prostředí j
 Než nahrávku odešleš, napiš uživateli v odpovědi, kam půjde. U tohoto skriptu je to `https://api.openai.com/v1/audio/transcriptions` (OpenAI). Bez tohoto upozornění příkaz nespouštěj. Skript externí odeslání sám odmítne, dokud nedostane `--confirm-external-upload`, a cíl stejně vypíše na chybový výstup.
 
 ```bash
-.venv/bin/python .cursor/skills/prepis-audia/scripts/transcribe.py \
+"$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/transcribe.py" \
   CESTA_K_AUDIU \
-  --output-dir output/transcripts \
+  --output-dir "$WORK_DIR/transcripts" \
   --provider openai \
   --confirm-external-upload
 ```
@@ -121,4 +134,4 @@ Odpověz ve vlákně té zprávy, která tě zavolala. České shrnutí pošli t
 - Do zprávy nepiš klíč k přepisu, cestu k nahrávce ani nic, co v audiu nezaznělo.
 - Kód v repozitáři neměň a pull request nezakládej, pokud o to uživatel ve stejné zprávě výslovně nepožádá.
 
-Do git commitu nepatří nahrávka, váhy modelu ani soubory z `output/`.
+Do git commitu nepatří nahrávka, váhy modelu ani soubory z dočasné složky přepisu.
