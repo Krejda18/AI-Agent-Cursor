@@ -59,6 +59,13 @@ def content_type(header: str | None) -> str:
     return (header or "").split(";", 1)[0].strip().lower()
 
 
+def without_fragment(url: str) -> str:
+    parts = urllib.parse.urlsplit(url)
+    if not parts.fragment:
+        return url
+    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, ""))
+
+
 def normalize_url(url: str) -> str:
     parts = urllib.parse.urlsplit(url.strip())
     path = parts.path.rstrip("/") or "/"
@@ -176,6 +183,7 @@ def is_audio_response(mime: str, url: str) -> bool:
 
 
 def save_audio(url: str, output_dir: Path, allow_private: bool) -> tuple[Path, int]:
+    url = without_fragment(url)
     with open_url(url, allow_private) as response:
         final = response.geturl()
         mime = content_type(response.headers.get("Content-Type"))
@@ -216,6 +224,7 @@ class PageParser(HTMLParser):
         self.links: list[str] = []
         self.jsonld: list[str] = []
         self.title_parts: list[str] = []
+        self.player_title: str | None = None
         self._in_title = False
         self._script_ld = False
         self._script_buf: list[str] = []
@@ -232,8 +241,15 @@ class PageParser(HTMLParser):
             key = (attr.get("property") or attr.get("name") or "").lower()
             if key in OG_AUDIO and attr.get("content"):
                 self.og.append(attr["content"])
+        if tag == "audio":
+            episode = attr.get("data-title", "").strip()
+            show = attr.get("data-podcast-title", "").strip()
+            if episode and show:
+                self.player_title = f"{episode} — {show}"
+            elif episode:
+                self.player_title = episode
         if tag in {"audio", "source"} and attr.get("src"):
-            self.media.append(attr["src"])
+            self.media.append(without_fragment(attr["src"]))
         if tag == "link":
             href = attr.get("href")
             type_ = attr.get("type", "").lower()
@@ -293,7 +309,7 @@ def absolute_unique(page_url: str, urls: list[str]) -> list[str]:
     for raw in urls:
         if not raw or not raw.strip():
             continue
-        absolute = urllib.parse.urljoin(page_url, raw.strip())
+        absolute = without_fragment(urllib.parse.urljoin(page_url, raw.strip()))
         key = normalize_url(absolute)
         if key in seen:
             continue
@@ -308,7 +324,7 @@ def audio_from_html(page_url: str, html: str) -> tuple[str, str | None]:
     ld_urls: list[str] = []
     for blob in parser.jsonld:
         ld_urls.extend(jsonld_audio_urls(blob))
-    title = re.sub(r"\s+", " ", "".join(parser.title_parts)).strip() or None
+    title = parser.player_title or re.sub(r"\s+", " ", "".join(parser.title_parts)).strip() or None
     for tier in (parser.og, ld_urls, parser.media, parser.links):
         urls = absolute_unique(page_url, tier)
         if len(urls) == 1:

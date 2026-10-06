@@ -19,9 +19,13 @@ class Handler(BaseHTTPRequestHandler):
     pages: dict[str, tuple[int, str, bytes]] = {}
 
     def do_GET(self) -> None:
-        status, mime, body = self.pages.get(self.path, (404, "text/plain", b"missing"))
+        item = self.pages.get(self.path, (404, "text/plain", b"missing"))
+        status, mime, body = item[0], item[1], item[2]
+        location = item[3] if len(item) > 3 else None
         self.send_response(status)
         self.send_header("Content-Type", mime)
+        if location:
+            self.send_header("Location", location)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -90,6 +94,15 @@ def test_feed_latest_and_item(base: str, tmp: Path) -> None:
     assert chosen["media_url"].endswith("/old.mp3")
 
 
+def test_player_share_link(base: str, tmp: Path) -> None:
+    result = fetch_audio.fetch(f"{base}/+AA4cJ2JWvxg", tmp, allow_private=True)
+    assert result["selection"] == "page"
+    assert result["media_url"] == f"{base}/media.mp3"
+    assert "#" not in result["media_url"]
+    assert result["episode_title"] == "TOTW - Omgång #22 — 90MinSvenskan"
+    assert Path(result["path"]).read_bytes() == b"ID3player-audio"
+
+
 def test_ambiguous_and_empty_page(base: str, tmp: Path) -> None:
     expect_fail(f"{base}/seznam", tmp)
     expect_fail(f"{base}/spotify", tmp)
@@ -120,6 +133,13 @@ def main() -> None:
       </body></html>
     """
     empty = "<html><head><title>Poslouchejte v aplikaci</title></head><body></body></html>"
+    player = """<!doctype html><html><head><title>TOTW — Overcast</title></head><body>
+      <audio data-title="TOTW - Omgång #22" data-podcast-title="90MinSvenskan">
+        <source src="MEDIA#t=0" type="audio/mpeg"/>
+      </audio>
+      <script>if (file_ext != '.mp3' && file_ext != '.m4a') {}</script>
+      </body></html>
+    """
     audio = b"ID3fake-audio"
     tmp = Path("/tmp/prepis-audia-fetch-test")
     if tmp.exists():
@@ -131,6 +151,7 @@ def main() -> None:
             "/new.mp3": (200, "audio/mpeg", audio),
             "/old.mp3": (200, "audio/mpeg", audio),
             "/reklama.mp3": (200, "audio/mpeg", b"ad"),
+            "/file.mp3": (200, "audio/mpeg", b"ID3player-audio"),
         }
     )
     try:
@@ -147,9 +168,21 @@ def main() -> None:
         server.RequestHandlerClass.pages["/starsi"] = server.RequestHandlerClass.pages["/show.xml"]
         server.RequestHandlerClass.pages["/seznam"] = (200, "text/html", listing.encode())
         server.RequestHandlerClass.pages["/spotify"] = (200, "text/html", empty.encode())
+        server.RequestHandlerClass.pages["/media.mp3"] = (
+            302,
+            "text/html",
+            b"",
+            f"{base}/file.mp3",
+        )
+        server.RequestHandlerClass.pages["/+AA4cJ2JWvxg"] = (
+            200,
+            "text/html",
+            player.replace("MEDIA", f"{base}/media.mp3").encode(),
+        )
         test_rejects_private_and_non_http(tmp / "blocked")
         test_direct_audio(base, tmp / "direct")
         test_episode_page(base, tmp / "page")
+        test_player_share_link(base, tmp / "player")
         test_feed_latest_and_item(base, tmp)
         test_ambiguous_and_empty_page(base, tmp / "bad")
     finally:

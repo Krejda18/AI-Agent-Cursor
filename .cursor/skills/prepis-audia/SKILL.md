@@ -31,7 +31,7 @@ Spouští to kterákoliv z těchto věcí:
 
 - přiložený audiosoubor
 - odkaz na audiosoubor (mp3, m4a, m4b, aac, ogg, wav, opus, flac)
-- odkaz na stránku jedné epizody
+- odkaz na stránku jedné epizody, včetně sdíleného přehrávače jako Overcast (`https://overcast.fm/+...`); ze stránky vezmi vložený zvuk a sleduj přesměrování až k souboru
 - odkaz na RSS nebo Atom položku
 - odkaz na feed pořadu; z něj vezmi jen nejnovější epizodu a ve shrnutí uveď její název
 
