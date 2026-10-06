@@ -182,7 +182,7 @@ def main() -> None:
       </body></html>
     """
     audio = b"ID3fake-audio"
-    tmp = Path("/tmp/prepis-audia-fetch-test")
+    tmp = Path("/tmp/prepis-audio-fetch-test")
     if tmp.exists():
         shutil.rmtree(tmp)
     tmp.mkdir()

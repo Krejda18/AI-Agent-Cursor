@@ -468,7 +468,7 @@ def main(argv: list[str] | None = None) -> int:
     detected_language = language or ""
     language_probability = 0.0
 
-    with tempfile.TemporaryDirectory(prefix="prepis-audia-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="prepis-audio-") as tmp:
         temp = Path(tmp)
         wav = temp / "source.wav"
         convert_wav(audio, wav)
