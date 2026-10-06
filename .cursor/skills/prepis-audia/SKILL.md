@@ -1,5 +1,5 @@
 ---
-name: prepis-tematicke-shrnuti-audia
+name: prepis-audia
 description: >-
   Z uživatelem dodané nahrávky udělá přepis v původním jazyce a české
   tematické shrnutí podle informací, které chce získat. Použij, když uživatel
@@ -7,7 +7,7 @@ description: >-
   nahrávky. Nahrávku nevyhledávej ani nestahuj.
 ---
 
-# Přepis a tematické shrnutí audia
+# Přepis audia
 
 ## Vstup
 
@@ -28,13 +28,13 @@ Prostředí, pokud ještě není:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r .cursor/skills/prepis-tematicke-shrnuti-audia/requirements.txt
+.venv/bin/pip install -r .cursor/skills/prepis-audia/requirements.txt
 ```
 
 Spuštění:
 
 ```bash
-.venv/bin/python .cursor/skills/prepis-tematicke-shrnuti-audia/scripts/transcribe.py \
+.venv/bin/python .cursor/skills/prepis-audia/scripts/transcribe.py \
   CESTA_K_AUDIU \
   --output-dir output/transcripts
 ```
@@ -50,7 +50,7 @@ Externí API je až záloha, a jen když lokální běh selže a v prostředí j
 Než nahrávku odešleš, napiš uživateli v odpovědi, kam půjde. U tohoto skriptu je to `https://api.openai.com/v1/audio/transcriptions` (OpenAI). Bez tohoto upozornění příkaz nespouštěj. Skript externí odeslání sám odmítne, dokud nedostane `--confirm-external-upload`, a cíl stejně vypíše na chybový výstup.
 
 ```bash
-.venv/bin/python .cursor/skills/prepis-tematicke-shrnuti-audia/scripts/transcribe.py \
+.venv/bin/python .cursor/skills/prepis-audia/scripts/transcribe.py \
   CESTA_K_AUDIU \
   --output-dir output/transcripts \
   --provider openai \

@@ -278,7 +278,7 @@ def load_local_model(model_name: str):
         fail(
             4,
             "Chybí balíček faster-whisper. Nainstaluj ho do .venv příkazem "
-            "pip install -r .cursor/skills/prepis-tematicke-shrnuti-audia/requirements.txt "
+            "pip install -r .cursor/skills/prepis-audia/requirements.txt "
             "a spusť přepis znovu. Nahrávka se nikam neodesílala.",
         )
     try:
