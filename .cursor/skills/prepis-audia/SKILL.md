@@ -3,7 +3,8 @@ name: prepis-audia
 description: >-
   Z vložené nahrávky, odkazu na podcast nebo z týdenního seznamu sledovaných
   pořadů udělá přepis a česky vytáhne finance klubů, hráče ve formě i mimo ni,
-  mladé hráče a nabídky na hráče. Postup spusť automaticky, jakmile je ve
+  mladé hráče a nabídky na hráče. Ze všech podcastů jedné země udělá ještě
+  celkový souhrn. Postup spusť automaticky, jakmile je ve
   zprávě audio, odkaz, nebo žádost o týdenní průchod. Pořad podle názvu
   nevyhledávej. Stáhni jen audio z odkazu, který uživatel vložil.
 ---
@@ -144,12 +145,21 @@ Z každé epizody vytáhni jen to, co v ní zaznělo. U každé položky uveď p
 
 Přestup nebo spekulaci sám nepřeřazuj do finanční situace klubu. Do financí patří jen výrok, který o penězích klubu opravdu mluví. Údaje jsou z nahrávky, ne ověřený stav klubu.
 
-Týdenní zpráva je jeden přehled za všechny nové díly. Stejná jména z víc pořadů nech u sebe a u každé zmínky uveď, ze kterého dílu je.
+Týdenní zpráva má nejdřív výtah po dílech. Stejná jména z víc pořadů nech u sebe a u každé zmínky uveď, ze kterého dílu je.
+
+## Souhrn za zemi
+
+Za týdenní průchod přidej ještě jeden celkový souhrn za každou zemi. Země ber ze skupin v `sledovane.txt`: Finsko, Norsko, Švédsko. Do souhrnu země patří všechny její nové díly z tohoto týdne.
+
+Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se mluví. Věta o norském klubu patří do Norska, věta o švédském klubu do Švédska. Když věta bere obě země najednou, uveď ji v obou souhrnech.
+
+Každý souhrn země má stejných šest skupin. Stejný klub nebo hráč ať je v jedné skupině jen jednou. Když se pořady liší, nech oba výroky a uveď pořad i díl. Nic nového oproti dílům nepřidávej. Když země ten týden nemá nový díl, napiš to a šest skupin nevyplňuj z dřívějších týdnů.
 
 ## Výstup pro uživatele
 
 - Které díly byly tento týden nové, a které se přeskočily, protože už jsou v `zpracovane.txt`.
-- Šest skupin výše. U jedné vložené epizody stejných šest skupin.
+- Šest skupin po dílech. U jedné vložené epizody stejných šest skupin, bez souhrnu za zemi.
+- U týdenního průchodu navíc celkový souhrn za Finsko, Norsko a Švédsko.
 - Podmínky, výjimky a nejasnosti zmíněné v audiu.
 - Úplný přepis jen na vyžádání.
 
@@ -161,7 +171,7 @@ Odpověz ve vlákně té zprávy, která tě zavolala. České shrnutí pošli t
 
 - Mimo tento kanál ber cílový kanál jen ze zadání. Když kanál neuvede, ulož koncept do jeho vlastní přímé zprávy, ať text před odesláním vidí.
 - Do jiného pojmenovaného kanálu zprávu odešli rovnou jen tehdy, když o odeslání výslovně požádá.
-- Text piš běžným markdownem. Nejdřív které díly jsou ve zprávě, pak šest skupin: finance klubů, hráči ve formě, hráči mimo formu, mladí hráči, nabídky. Nakonec nejasnosti.
+- Text piš běžným markdownem. Nejdřív které díly jsou ve zprávě, pak šest skupin po dílech: finance klubů, hráči ve formě, hráči mimo formu, mladí hráči, nabídky. U týdenního průchodu potom celkový souhrn za Finsko, za Norsko a za Švédsko. Nakonec nejasnosti.
 - Do zprávy nepiš klíč k přepisu, cestu k nahrávce ani nic, co v audiu nezaznělo.
 - Kód v repozitáři neměň a pull request nezakládej, pokud o to uživatel ve stejné zprávě výslovně nepožádá.
 
