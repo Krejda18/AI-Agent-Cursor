@@ -1,21 +1,49 @@
 ---
 name: prepis-audia
 description: >-
-  Z uživatelem dodané nahrávky udělá přepis v původním jazyce a české shrnutí
-  celého podcastu. U fotbalu, lig a hráčů uvede konkrétní hráče a důvod, proč
-  se o nich mluví. Použij, když uživatel přiloží audio nebo požádá o přepis či
-  shrnutí nahrávky. Nahrávku nevyhledávej ani nestahuj.
+  Z vložené nahrávky nebo z vloženého odkazu na podcast udělá přepis v původním
+  jazyce a české shrnutí celého podcastu. Postup spusť automaticky, jakmile je
+  ve zprávě audio nebo odkaz na epizodu; na další zadání nečekej. U fotbalu,
+  lig a hráčů uvede konkrétní hráče a důvod, proč se o nich mluví. Pořad podle
+  názvu nevyhledávej. Stáhni jen audio z odkazu, který uživatel vložil.
 ---
 
 # Přepis audia
 
+## Automatické spuštění
+
+Jakmile je ve zprávě audiosoubor nebo odkaz na podcast, spusť celý postup hned. Neptej se, co z nahrávky získat, a nečekej na další pokyn. Text vedle souboru nebo odkazu je jen doplněk. Shrnutí pořád pokryje celou epizodu.
+
+Spouští to kterákoliv z těchto věcí:
+
+- přiložený audiosoubor
+- odkaz na audiosoubor (mp3, m4a, m4b, aac, ogg, wav, opus, flac)
+- odkaz na stránku jedné epizody
+- odkaz na RSS nebo Atom položku
+- odkaz na feed pořadu; z něj vezmi jen nejnovější epizodu a ve shrnutí uveď její název
+
+Pořad nevyhledávej podle názvu, v katalogu, v archivu vysílatele ani na webu. Stahuj jen z odkazu, který uživatel vložil.
+
+Když chybí soubor i odkaz, přepis nespouštěj. Napiš, že je potřeba vložit nahrávku nebo odkaz na epizodu. Netvrď, že nahrávka byla zpracovaná.
+
 ## Vstup
 
-Uživatel dodá audiosoubor. Cílem je shrnutí celého podcastu, ne výběr podle jedné otázky. Když k nahrávce něco dopíše, ber to jako doplněk, ale shrnutí pořád pokryje celou epizodu.
+Soubor hledej v pracovním prostoru a v přílohách zprávy. Když už tam je, nevyžaduj nové nahrání.
 
-Soubor hledej v pracovním prostoru a v přílohách zprávy. Když už tam je, nevyžaduj nové nahrání a nic nestahuj. Nahrávku nevyhledávej na internetu, v archivech vysílatelů ani v podcastových katalozích.
+Odkaz předej skriptu [scripts/fetch_audio.py](scripts/fetch_audio.py). Ten uloží jednu epizodu do `output/audio` a na standardní výstup vypíše JSON s cestou, názvem dílu a polem `selection`.
 
-Když soubor chybí, přepis nespouštěj. Napiš, že je potřeba přiložit nahrávku. Netvrď, že nahrávka byla zpracovaná.
+```bash
+.venv/bin/python .cursor/skills/prepis-audia/scripts/fetch_audio.py \
+  VLOZENY_ODKAZ \
+  --output-dir output/audio
+```
+
+- `direct` nebo `page` znamená soubor z vloženého odkazu nebo ze stránky té epizody.
+- `feed_item` znamená díl, na který odkaz mířil.
+- `feed_latest` znamená, že odkaz vedl na celý feed. Ve shrnutí napiš název z `episode_title` a že jde o nejnovější díl toho feedu.
+- Když stránka nabízí víc zvuků a není jasné, který je epizoda, skript se zastaví. Předej uživateli jeho hlášku a přepis nespouštěj.
+- Když odkaz zvuk nevydá, typicky přehrávač bez souboru, přihlášení nebo zamčená epizoda, skript se zastaví. Přepis nespouštěj a netvrď, že nahrávka byla zpracovaná.
+- Stažený soubor necommituj. Patří do `output/`, který je v `.gitignore`.
 
 ## Nástroj
 
@@ -56,7 +84,7 @@ Než nahrávku odešleš, napiš uživateli v odpovědi, kam půjde. U tohoto sk
 
 ## Postup
 
-1. Načti dodaný audiosoubor. Když v pracovním prostoru už je, nevyžaduj nové nahrání.
+1. Vezmi přiložené audio, nebo z vloženého odkazu stáhni jednu epizodu. Na další zadání nečekej. Když není ani soubor, ani odkaz, zastav se.
 2. Zkontroluj formát, délku a limity. Lokální model nemá pevný strop délky; dlouhé soubory jdou po dílech. OpenAI přijímá nejvýše 25 MB na jeden požadavek, skript je v té větvi také dělí.
 3. Podle potřeby převeď audio do WAV 16 kHz mono. Dlouhé nahrávky nech rozdělit s krátkým překryvem.
 4. Přepiš celou nahrávku v původním jazyce a zachovej časové značky. Duplicity z překryvu nech skript odstranit a časy nech přepočítat vůči původní nahrávce.
@@ -65,7 +93,7 @@ Než nahrávku odešleš, napiš uživateli v odpovědi, kam půjde. U tohoto sk
 7. Vytvoř české shrnutí celého podcastu. Ke klíčovým bodům přidej časové odkazy na nahrávku ve tvaru `mm:ss` nebo `h:mm:ss`.
 8. Jasně rozlišuj tvrzení účastníků, jejich názory a nejistoty. Jméno, klub, číslo nebo důvod uváděj jen tehdy, když v nahrávce zazněly. Když je pasáž nesrozumitelná, napiš to a nic za ni nedoplňuj.
 9. Právní či jiné časově proměnlivé informace nepředkládej automaticky jako aktuálně platné. Jsou to údaje z nahrávky k datu jejího pořízení. Případné ověření z oficiálních zdrojů uveď odděleně od shrnutí audia, včetně data ověření a odkazů.
-10. Pokud přepis selže, popiš konkrétní problém (chybějící soubor, nečitelný formát, pád modelu, prázdný výsledek, odmítnuté API) a potřebný další krok. Nikdy netvrď, že jsi nahrávku zpracoval, pokud se to nepodařilo.
+10. Pokud stažení nebo přepis selže, popiš konkrétní problém (chybějící soubor, odkaz beze zvuku, víc souborů na stránce, nečitelný formát, pád modelu, prázdný výsledek, odmítnuté API) a potřebný další krok. Nikdy netvrď, že jsi nahrávku zpracoval, pokud se to nepodařilo.
 
 ## Shrnutí celého podcastu
 
@@ -83,7 +111,7 @@ Když je podcast o fotbale, ligách nebo hráčích, uveď konkrétní hráče, 
 
 ## Slack
 
-Veřejný kanál `#prepis-audia` (`C0C78B1UKBK`) je vyhrazený jen tomuto skillu. Když tě spustí zpráva z tohoto kanálu, udělej přepis a shrnutí celého podcastu. Jiný úkol odmítni jednou větou a požádej o nahrávku.
+Veřejný kanál `#prepis-audia` (`C0C78B1UKBK`) je vyhrazený jen tomuto skillu. Když tě spustí zpráva z tohoto kanálu a je v ní audio nebo odkaz na podcast, spusť celý postup automaticky. Na další zadání nečekej. Ve zprávě stačí nahrávka nebo odkaz; uživatel nemusí psát, co z nich chce. Jiný úkol odmítni jednou větou a požádej o nahrávku nebo odkaz.
 
 Odpověz ve vlákně té zprávy, která tě zavolala. České shrnutí pošli tam. Úplný přepis do Slacku nedávej, pokud o něj výslovně nepožádá.
 
