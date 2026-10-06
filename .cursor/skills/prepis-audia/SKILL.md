@@ -1,24 +1,21 @@
 ---
 name: prepis-audia
 description: >-
-  Z uživatelem dodané nahrávky udělá přepis v původním jazyce a české
-  tematické shrnutí podle informací, které chce získat. Použij, když uživatel
-  přiloží audio a napíše, co z něj potřebuje, nebo požádá o přepis či shrnutí
-  nahrávky. Nahrávku nevyhledávej ani nestahuj.
+  Z uživatelem dodané nahrávky udělá přepis v původním jazyce a české shrnutí
+  celého podcastu. U fotbalu, lig a hráčů uvede konkrétní hráče a důvod, proč
+  se o nich mluví. Použij, když uživatel přiloží audio nebo požádá o přepis či
+  shrnutí nahrávky. Nahrávku nevyhledávej ani nestahuj.
 ---
 
 # Přepis audia
 
 ## Vstup
 
-Uživatel dodá obojí:
-
-1. audiosoubor,
-2. co se z nahrávky má získat (otázka nebo seznam témat).
+Uživatel dodá audiosoubor. Cílem je shrnutí celého podcastu, ne výběr podle jedné otázky. Když k nahrávce něco dopíše, ber to jako doplněk, ale shrnutí pořád pokryje celou epizodu.
 
 Soubor hledej v pracovním prostoru a v přílohách zprávy. Když už tam je, nevyžaduj nové nahrání a nic nestahuj. Nahrávku nevyhledávej na internetu, v archivech vysílatelů ani v podcastových katalozích.
 
-Když soubor chybí, přepis nespouštěj. Napiš, že je potřeba přiložit nahrávku a zopakovat, jaké informace se mají získat. Netvrď, že nahrávka byla zpracovaná.
+Když soubor chybí, přepis nespouštěj. Napiš, že je potřeba přiložit nahrávku. Netvrď, že nahrávka byla zpracovaná.
 
 ## Nástroj
 
@@ -64,28 +61,35 @@ Než nahrávku odešleš, napiš uživateli v odpovědi, kam půjde. U tohoto sk
 3. Podle potřeby převeď audio do WAV 16 kHz mono. Dlouhé nahrávky nech rozdělit s krátkým překryvem.
 4. Přepiš celou nahrávku v původním jazyce a zachovej časové značky. Duplicity z překryvu nech skript odstranit a časy nech přepočítat vůči původní nahrávce.
 5. Nesrozumitelná místa nech označená jako `[nesrozumitelné]`. Nedoplňuj odhadem jména, čísla, právní podmínky ani jiná chybějící fakta. Nejistý segment zůstává s původním zněním a značkou `[nejisté]`.
-6. Vyhledej pasáže relevantní k tomu, co uživatel chce získat. Zohledni i související vysvětlení a výjimky z jiných částí nahrávky.
-7. Vytvoř stručné české shrnutí. Ke klíčovým bodům přidej časové odkazy na nahrávku ve tvaru `mm:ss` nebo `h:mm:ss`.
-8. Jasně rozlišuj tvrzení účastníků, jejich názory a nejistoty. Pokud audio na otázku neodpovídá, výslovně to uveď. U tématu, které v nahrávce nezaznělo, napiš, že v ní není, a nic za něj nedoplňuj.
+6. Shrň celou nahrávku. Nevynech pozdější část jen proto, že úvod už téma naznačil. Zohledni vysvětlení, výjimky a obraty z jiných míst epizody.
+7. Vytvoř české shrnutí celého podcastu. Ke klíčovým bodům přidej časové odkazy na nahrávku ve tvaru `mm:ss` nebo `h:mm:ss`.
+8. Jasně rozlišuj tvrzení účastníků, jejich názory a nejistoty. Jméno, klub, číslo nebo důvod uváděj jen tehdy, když v nahrávce zazněly. Když je pasáž nesrozumitelná, napiš to a nic za ni nedoplňuj.
 9. Právní či jiné časově proměnlivé informace nepředkládej automaticky jako aktuálně platné. Jsou to údaje z nahrávky k datu jejího pořízení. Případné ověření z oficiálních zdrojů uveď odděleně od shrnutí audia, včetně data ověření a odkazů.
 10. Pokud přepis selže, popiš konkrétní problém (chybějící soubor, nečitelný formát, pád modelu, prázdný výsledek, odmítnuté API) a potřebný další krok. Nikdy netvrď, že jsi nahrávku zpracoval, pokud se to nepodařilo.
 
+## Shrnutí celého podcastu
+
+Shrnutí má pokrýt celou epizodu: o čem je, jak se debata posouvá a čím končí. Každý podstatný bod má čas.
+
+Když je podcast o fotbale, ligách nebo hráčích, uveď konkrétní hráče, o kterých se mluví, a u každého důvod té debaty tak, jak ho říkají účastníci. Důvod může být forma, zranění, přestup, sestava, trest, výkon v zápase nebo spor v diskusi. Hráče, kteří v nahrávce nezazněli, nepřidávej. U nejistě rozpoznaného jména nech značku `[nejisté]` a nevymýšlej klub ani důvod.
+
 ## Výstup pro uživatele
 
-- Krátká přímá odpověď na to, co chtěl získat.
-- Přehled hlavních bodů s časovými značkami.
+- O čem celý podcast je.
+- Průběh po tématech, s časovými značkami.
+- U fotbalu seznam hráčů a důvod, proč se o nich mluví.
 - Podmínky, výjimky a nejasnosti zmíněné v audiu.
 - Úplný přepis jen na vyžádání.
 
 ## Slack
 
-Veřejný kanál `#prepis-audia` (`C0C78B1UKBK`) je vyhrazený jen tomuto skillu. Když tě spustí zpráva z tohoto kanálu, dělej pouze přepis a tematické shrnutí. Jiný úkol odmítni jednou větou a požádej o nahrávku a o to, co se z ní má získat.
+Veřejný kanál `#prepis-audia` (`C0C78B1UKBK`) je vyhrazený jen tomuto skillu. Když tě spustí zpráva z tohoto kanálu, udělej přepis a shrnutí celého podcastu. Jiný úkol odmítni jednou větou a požádej o nahrávku.
 
 Odpověz ve vlákně té zprávy, která tě zavolala. České shrnutí pošli tam. Úplný přepis do Slacku nedávej, pokud o něj výslovně nepožádá.
 
 - Mimo tento kanál ber cílový kanál jen ze zadání. Když kanál neuvede, ulož koncept do jeho vlastní přímé zprávy, ať text před odesláním vidí.
 - Do jiného pojmenovaného kanálu zprávu odešli rovnou jen tehdy, když o odeslání výslovně požádá.
-- Text piš běžným markdownem. Na začátek dej přímou odpověď, pak body s časy a nakonec podmínky, výjimky a nejasnosti.
+- Text piš běžným markdownem. Na začátek dej, o čem celý podcast je, pak průběh s časy. U fotbalu přidej hráče a důvod debaty. Nakonec podmínky, výjimky a nejasnosti.
 - Do zprávy nepiš klíč k přepisu, cestu k nahrávce ani nic, co v audiu nezaznělo.
 - Kód v repozitáři neměň a pull request nezakládej, pokud o to uživatel ve stejné zprávě výslovně nepožádá.
 
