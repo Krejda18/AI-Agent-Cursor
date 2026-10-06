@@ -1,0 +1,2 @@
+# Už přepsané epizody. Každý řádek je media_url z výstupu fetch_audio.py.
+# Skill sem řádek přidá až po hotovém přepisu, aby se stejný díl příští týden nestahoval znovu.

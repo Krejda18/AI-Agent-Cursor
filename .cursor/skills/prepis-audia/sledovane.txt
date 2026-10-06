@@ -1,0 +1,4 @@
+# Sledované podcasty. Jeden odkaz na řádek.
+# Hodí se RSS feed pořadu, stránka epizody, odkaz na Overcast nebo přímý audiosoubor.
+# Řádek s # a prázdný řádek se přeskakují.
+# Pořad podle názvu skill nevyhledává. Bez odkazu tady týdenní postup nemá co stáhnout.

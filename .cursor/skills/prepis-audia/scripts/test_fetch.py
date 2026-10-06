@@ -103,6 +103,24 @@ def test_player_share_link(base: str, tmp: Path) -> None:
     assert Path(result["path"]).read_bytes() == b"ID3player-audio"
 
 
+def test_recent_feed(base: str, tmp: Path) -> None:
+    now = fetch_audio.datetime(2026, 10, 6, 12, 0, tzinfo=fetch_audio.timezone.utc)
+    recent = fetch_audio.fetch_recent(f"{base}/tyden.xml", tmp / "recent", 7, allow_private=True, now=now)
+    assert len(recent) == 1
+    assert recent[0]["selection"] == "feed_recent"
+    assert recent[0]["episode_title"] == "Díl z tohoto týdne"
+    assert recent[0]["media_url"].endswith("/new.mp3")
+    assert Path(recent[0]["path"]).read_bytes() == b"ID3fake-audio"
+
+    none = fetch_audio.fetch_recent(f"{base}/stary.xml", tmp / "old", 7, allow_private=True, now=now)
+    assert none == []
+
+    undated = fetch_audio.fetch_recent(f"{base}/show.xml", tmp / "undated", 7, allow_private=True, now=now)
+    assert len(undated) == 1
+    assert undated[0]["selection"] == "feed_latest"
+    assert undated[0]["episode_title"] == "Nejnovější díl"
+
+
 def test_ambiguous_and_empty_page(base: str, tmp: Path) -> None:
     expect_fail(f"{base}/seznam", tmp)
     expect_fail(f"{base}/spotify", tmp)
@@ -133,6 +151,29 @@ def main() -> None:
       </body></html>
     """
     empty = "<html><head><title>Poslouchejte v aplikaci</title></head><body></body></html>"
+    week_feed = """<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0"><channel>
+      <item>
+        <title>Díl z tohoto týdne</title>
+        <pubDate>Mon, 05 Oct 2026 12:00:00 GMT</pubDate>
+        <enclosure url="NEW" type="audio/mpeg"/>
+      </item>
+      <item>
+        <title>Starý díl</title>
+        <pubDate>Tue, 01 Sep 2026 12:00:00 GMT</pubDate>
+        <enclosure url="OLD" type="audio/mpeg"/>
+      </item>
+    </channel></rss>
+    """
+    old_feed = """<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0"><channel>
+      <item>
+        <title>Jen starý díl</title>
+        <pubDate>Tue, 01 Sep 2026 12:00:00 GMT</pubDate>
+        <enclosure url="OLD" type="audio/mpeg"/>
+      </item>
+    </channel></rss>
+    """
     player = """<!doctype html><html><head><title>TOTW — Overcast</title></head><body>
       <audio data-title="TOTW - Omgång #22" data-podcast-title="90MinSvenskan">
         <source src="MEDIA#t=0" type="audio/mpeg"/>
@@ -179,11 +220,22 @@ def main() -> None:
             "text/html",
             player.replace("MEDIA", f"{base}/media.mp3").encode(),
         )
+        server.RequestHandlerClass.pages["/tyden.xml"] = (
+            200,
+            "application/rss+xml",
+            week_feed.replace("NEW", f"{base}/new.mp3").replace("OLD", f"{base}/old.mp3").encode(),
+        )
+        server.RequestHandlerClass.pages["/stary.xml"] = (
+            200,
+            "application/rss+xml",
+            old_feed.replace("OLD", f"{base}/old.mp3").encode(),
+        )
         test_rejects_private_and_non_http(tmp / "blocked")
         test_direct_audio(base, tmp / "direct")
         test_episode_page(base, tmp / "page")
         test_player_share_link(base, tmp / "player")
         test_feed_latest_and_item(base, tmp)
+        test_recent_feed(base, tmp)
         test_ambiguous_and_empty_page(base, tmp / "bad")
     finally:
         server.shutdown()

@@ -1,11 +1,11 @@
 ---
 name: prepis-audia
 description: >-
-  Z vložené nahrávky nebo z vloženého odkazu na podcast udělá přepis v původním
-  jazyce a české shrnutí celého podcastu. Postup spusť automaticky, jakmile je
-  ve zprávě audio nebo odkaz na epizodu; na další zadání nečekej. U fotbalu,
-  lig a hráčů uvede konkrétní hráče a důvod, proč se o nich mluví. Pořad podle
-  názvu nevyhledávej. Stáhni jen audio z odkazu, který uživatel vložil.
+  Z vložené nahrávky, odkazu na podcast nebo z týdenního seznamu sledovaných
+  pořadů udělá přepis a česky vytáhne finance klubů, hráče ve formě i mimo ni,
+  mladé hráče a nabídky na hráče. Postup spusť automaticky, jakmile je ve
+  zprávě audio, odkaz, nebo žádost o týdenní průchod. Pořad podle názvu
+  nevyhledávej. Stáhni jen audio z odkazu, který uživatel vložil.
 ---
 
 # Přepis audia
@@ -25,7 +25,9 @@ WORK_DIR="${TMPDIR:-/tmp}/prepis-audia"
 
 ## Automatické spuštění
 
-Jakmile je ve zprávě audiosoubor nebo odkaz na podcast, spusť celý postup hned. Neptej se, co z nahrávky získat, a nečekej na další pokyn. Text vedle souboru nebo odkazu je jen doplněk. Shrnutí pořád pokryje celou epizodu.
+Jakmile je ve zprávě audiosoubor nebo odkaz na podcast, spusť celý postup hned. Neptej se, co z nahrávky získat, a nečekej na další pokyn. Text vedle souboru nebo odkazu je jen doplněk. Výstup vytáhne informace o klubech, hráčích a nabídkách z celé epizody.
+
+Když uživatel požádá o týdenní průchod, nebo je pondělní běh sledovaných pořadů, použij postup v části Týdenní průchod. Na další zadání nečekej.
 
 Spouští to kterákoliv z těchto věcí:
 
@@ -97,28 +99,55 @@ Než nahrávku odešleš, napiš uživateli v odpovědi, kam půjde. U tohoto sk
 
 ## Postup
 
-1. Vezmi přiložené audio, nebo z vloženého odkazu stáhni jednu epizodu. Na další zadání nečekej. Když není ani soubor, ani odkaz, zastav se.
+1. Vezmi přiložené audio, nebo z vloženého odkazu stáhni jednu epizodu. Když jde o týdenní průchod, vezmi odkazy ze `sledovane.txt`. Na další zadání nečekej. Když není soubor, odkaz ani týdenní seznam, zastav se.
 2. Zkontroluj formát, délku a limity. Lokální model nemá pevný strop délky; dlouhé soubory jdou po dílech. OpenAI přijímá nejvýše 25 MB na jeden požadavek, skript je v té větvi také dělí.
 3. Podle potřeby převeď audio do WAV 16 kHz mono. Dlouhé nahrávky nech rozdělit s krátkým překryvem.
 4. Přepiš celou nahrávku v původním jazyce a zachovej časové značky. Duplicity z překryvu nech skript odstranit a časy nech přepočítat vůči původní nahrávce.
 5. Nesrozumitelná místa nech označená jako `[nesrozumitelné]`. Nedoplňuj odhadem jména, čísla, právní podmínky ani jiná chybějící fakta. Nejistý segment zůstává s původním zněním a značkou `[nejisté]`.
-6. Shrň celou nahrávku. Nevynech pozdější část jen proto, že úvod už téma naznačil. Zohledni vysvětlení, výjimky a obraty z jiných míst epizody.
-7. Vytvoř české shrnutí celého podcastu. Ke klíčovým bodům přidej časové odkazy na nahrávku ve tvaru `mm:ss` nebo `h:mm:ss`.
+6. Projdi celý přepis. Nevynech pozdější část jen proto, že úvod už téma naznačil. Zohledni vysvětlení, výjimky a obraty z jiných míst epizody.
+7. Vytáhni česky šest skupin z části Co z přepisu vytáhnout. Ke každé položce přidej čas `mm:ss` nebo `h:mm:ss`.
 8. Jasně rozlišuj tvrzení účastníků, jejich názory a nejistoty. Jméno, klub, číslo nebo důvod uváděj jen tehdy, když v nahrávce zazněly. Když je pasáž nesrozumitelná, napiš to a nic za ni nedoplňuj.
 9. Právní či jiné časově proměnlivé informace nepředkládej automaticky jako aktuálně platné. Jsou to údaje z nahrávky k datu jejího pořízení. Případné ověření z oficiálních zdrojů uveď odděleně od shrnutí audia, včetně data ověření a odkazů.
 10. Pokud stažení nebo přepis selže, popiš konkrétní problém (chybějící soubor, odkaz beze zvuku, víc souborů na stránce, nečitelný formát, pád modelu, prázdný výsledek, odmítnuté API) a potřebný další krok. Nikdy netvrď, že jsi nahrávku zpracoval, pokud se to nepodařilo.
 
-## Shrnutí celého podcastu
+## Týdenní průchod
 
-Shrnutí má pokrýt celou epizodu: o čem je, jak se debata posouvá a čím končí. Každý podstatný bod má čas.
+Jednou týdně projdi sledované podcasty. Seznam odkazů je v [sledovane.txt](sledovane.txt) ve složce skillu. Jeden odkaz na řádek: RSS feed, stránka epizody, Overcast nebo přímý soubor. Řádky s `#` a prázdné řádky přeskoč. Pořad podle názvu nevyhledávej. Když v souboru není žádný odkaz, průchod zastav a napiš, že seznam je prázdný. Nic nestahuj a netvrď, že epizody byly zpracované.
 
-Když je podcast o fotbale, ligách nebo hráčích, uveď konkrétní hráče, o kterých se mluví, a u každého důvod té debaty tak, jak ho říkají účastníci. Důvod může být forma, zranění, přestup, sestava, trest, výkon v zápase nebo spor v diskusi. Hráče, kteří v nahrávce nezazněli, nepřidávej. U nejistě rozpoznaného jména nech značku `[nejisté]` a nevymýšlej klub ani důvod.
+Už přepsané díly jsou v [zpracovane.txt](zpracovane.txt), jeden `media_url` na řádek. Ty přeskoč.
+
+Pro každý odkaz stáhni díly z posledních 7 dní:
+
+```bash
+"$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/fetch_audio.py" \
+  ODKAZ_ZE_SEZNAMU \
+  --output-dir "$WORK_DIR/audio" \
+  --recent-days 7
+```
+
+Výstup je JSON pole. `feed_recent` jsou díly s datem v posledních 7 dnech. `feed_latest` znamená, že feed datum nemá, takže je stažený jen nejnovější díl; ve zprávě to napiš. Prázdné pole znamená, že tento týden nový díl nevyšel. Odkaz na jednu epizodu nebo přehrávač stáhne ten jeden díl.
+
+Každý nový soubor přepiš celý. Až přepis existuje, dopiš jeho `media_url` do `zpracovane.txt`. Když přepis selže, řádek nepřidávej. Nahrávku ani přepis necommituj.
+
+## Co z přepisu vytáhnout
+
+Z každé epizody vytáhni jen to, co v ní zaznělo. U každé položky uveď pořad, název dílu a čas `mm:ss`. Jméno, klub, částku a důvod nech jen tehdy, když zazněly. Nejisté jméno označ `[nejisté]`. Prázdnou skupinu napiš jako „Nezaznělo.“
+
+- **Kluby, dobrá finanční situace.** Řekli, že klub má peníze, vyrovnaný rozpočet, bohatého vlastníka, splacené dluhy nebo prostor nakupovat.
+- **Kluby, špatná finanční situace.** Řekli, že klub má dluhy, problém s finančním fair play, nucený prodej, srážky mezd, insolvenci nebo že na nákup nemá.
+- **Hráči, kteří hrají dobře.** Jméno a důvod: forma, zápas, góly, přihrávky, nasazení.
+- **Hráči, kteří hrají špatně.** Jméno a důvod: forma, chyba, zranění, mimo sestavu, trest.
+- **Mladí hráči.** Koho označili za mladého, talent, odchovance nebo dorostence a proč o něm mluví.
+- **Nabídky na hráče.** Kdo nabízí, na koho, z jakého klubu a kam. Částku uveď jen když zazněla. Rozliš, jestli mluví o nabídce, zájmu, nebo o hotovém přestupu.
+
+Přestup nebo spekulaci sám nepřeřazuj do finanční situace klubu. Do financí patří jen výrok, který o penězích klubu opravdu mluví. Údaje jsou z nahrávky, ne ověřený stav klubu.
+
+Týdenní zpráva je jeden přehled za všechny nové díly. Stejná jména z víc pořadů nech u sebe a u každé zmínky uveď, ze kterého dílu je.
 
 ## Výstup pro uživatele
 
-- O čem celý podcast je.
-- Průběh po tématech, s časovými značkami.
-- U fotbalu seznam hráčů a důvod, proč se o nich mluví.
+- Které díly byly tento týden nové, a které se přeskočily, protože už jsou v `zpracovane.txt`.
+- Šest skupin výše. U jedné vložené epizody stejných šest skupin.
 - Podmínky, výjimky a nejasnosti zmíněné v audiu.
 - Úplný přepis jen na vyžádání.
 
@@ -130,7 +159,7 @@ Odpověz ve vlákně té zprávy, která tě zavolala. České shrnutí pošli t
 
 - Mimo tento kanál ber cílový kanál jen ze zadání. Když kanál neuvede, ulož koncept do jeho vlastní přímé zprávy, ať text před odesláním vidí.
 - Do jiného pojmenovaného kanálu zprávu odešli rovnou jen tehdy, když o odeslání výslovně požádá.
-- Text piš běžným markdownem. Na začátek dej, o čem celý podcast je, pak průběh s časy. U fotbalu přidej hráče a důvod debaty. Nakonec podmínky, výjimky a nejasnosti.
+- Text piš běžným markdownem. Nejdřív které díly jsou ve zprávě, pak šest skupin: finance klubů, hráči ve formě, hráči mimo formu, mladí hráči, nabídky. Nakonec nejasnosti.
 - Do zprávy nepiš klíč k přepisu, cestu k nahrávce ani nic, co v audiu nezaznělo.
 - Kód v repozitáři neměň a pull request nezakládej, pokud o to uživatel ve stejné zprávě výslovně nepožádá.
 

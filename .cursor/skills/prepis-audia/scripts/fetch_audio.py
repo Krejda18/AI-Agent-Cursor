@@ -18,6 +18,8 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree
@@ -343,7 +345,7 @@ def audio_from_html(page_url: str, html: str) -> tuple[str, str | None]:
 
 def child_text(element: ElementTree.Element, name: str) -> str | None:
     for child in element:
-        if local_name(child.tag) == name and child.text and child.text.strip():
+        if local_name(child.tag) == name.lower() and child.text and child.text.strip():
             return child.text.strip()
     return None
 
@@ -367,6 +369,11 @@ def feed_items(root: ElementTree.Element) -> list[dict]:
         title = child_text(element, "title")
         link = child_text(element, "link")
         guid = child_text(element, "guid") or child_text(element, "id")
+        published_raw = None
+        for date_name in ("pubDate", "published", "updated", "date"):
+            published_raw = child_text(element, date_name)
+            if published_raw:
+                break
         enclosure = None
         for child in list(element):
             name = local_name(child.tag)
@@ -387,8 +394,48 @@ def feed_items(root: ElementTree.Element) -> list[dict]:
                 elif href and rel in {"", "alternate"} and not link:
                     link = href
         if enclosure:
-            items.append({"title": title, "link": link, "guid": guid, "enclosure": enclosure})
+            items.append(
+                {
+                    "title": title,
+                    "link": link,
+                    "guid": guid,
+                    "enclosure": enclosure,
+                    "published": parse_published(published_raw),
+                }
+            )
     return items
+
+
+def parse_published(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    text = value.strip()
+    parsed = None
+    try:
+        parsed = parsedate_to_datetime(text)
+    except (TypeError, ValueError, IndexError, OverflowError):
+        parsed = None
+    if parsed is None:
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def recent_feed_items(items: list[dict], days: int, now: datetime) -> tuple[list[dict], str]:
+    if not items:
+        fail(2, "Feed neobsahuje zvukovou epizodu. Přepis jsem nespustil.")
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    cutoff = now.astimezone(timezone.utc) - timedelta(days=days)
+    dated = [item for item in items if item.get("published")]
+    if not dated:
+        return [items[0]], "feed_latest"
+    chosen = [item for item in dated if item["published"] >= cutoff]
+    return chosen, "feed_recent"
 
 
 def select_feed_item(items: list[dict], requested_url: str) -> tuple[dict, str]:
@@ -411,6 +458,20 @@ def looks_like_feed(mime: str, body: bytes) -> bool:
 
 def decode_text(body: bytes) -> str:
     return body.decode("utf-8", errors="replace")
+
+
+def result_from_item(url: str, item: dict, selection: str, output_dir: Path, allow_private: bool) -> dict:
+    path, size = save_audio(item["enclosure"], output_dir, allow_private)
+    published = item.get("published")
+    return {
+        "source_url": url,
+        "media_url": item["enclosure"],
+        "path": str(path),
+        "episode_title": item.get("title"),
+        "selection": selection,
+        "bytes": size,
+        "published": published.isoformat() if published else None,
+    }
 
 
 def fetch(url: str, output_dir: Path, allow_private: bool = False) -> dict:
@@ -441,15 +502,7 @@ def fetch(url: str, output_dir: Path, allow_private: bool = False) -> dict:
             item["guid"] = absolute_ref(final, item.get("guid"))
             item["enclosure"] = absolute_ref(final, item.get("enclosure"))
         item, selection = select_feed_item(items, final)
-        path, size = save_audio(item["enclosure"], output_dir, allow_private)
-        return {
-            "source_url": url,
-            "media_url": item["enclosure"],
-            "path": str(path),
-            "episode_title": item.get("title"),
-            "selection": selection,
-            "bytes": size,
-        }
+        return result_from_item(url, item, selection, output_dir, allow_private)
 
     media_url, title = audio_from_html(final, decode_text(body))
     path, size = save_audio(media_url, output_dir, allow_private)
@@ -463,12 +516,63 @@ def fetch(url: str, output_dir: Path, allow_private: bool = False) -> dict:
     }
 
 
+def load_feed(url: str, allow_private: bool) -> tuple[str, str, bytes] | None:
+    with open_url(url, allow_private) as response:
+        final = response.geturl()
+        mime = content_type(response.headers.get("Content-Type"))
+        if is_audio_response(mime, final):
+            return None
+        body = read_capped(response, SNIFF_BYTES)
+    if not looks_like_feed(mime, body):
+        return None
+    return final, mime, body
+
+
+def fetch_recent(
+    url: str,
+    output_dir: Path,
+    days: int,
+    allow_private: bool = False,
+    now: datetime | None = None,
+) -> list[dict]:
+    if days < 1:
+        fail(2, "Počet dní musí být aspoň 1.")
+    loaded = load_feed(url, allow_private)
+    if loaded is None:
+        one = fetch(url, output_dir, allow_private)
+        one.setdefault("published", None)
+        return [one]
+    final, _mime, body = loaded
+    try:
+        root = ElementTree.fromstring(body)
+    except ElementTree.ParseError:
+        fail(2, "Odkaz vypadá jako feed, ale nejde ho přečíst. Přepis jsem nespustil.")
+    items = feed_items(root)
+    for item in items:
+        item["link"] = absolute_ref(final, item.get("link"))
+        item["guid"] = absolute_ref(final, item.get("guid"))
+        item["enclosure"] = absolute_ref(final, item.get("enclosure"))
+    chosen, selection = recent_feed_items(items, days, now or datetime.now(timezone.utc))
+    return [
+        result_from_item(url, item, selection, output_dir, allow_private)
+        for item in chosen
+    ]
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Stáhne jednu epizodu z vloženého odkazu.")
+    parser = argparse.ArgumentParser(description="Stáhne epizodu z vloženého odkazu.")
     parser.add_argument("url")
     parser.add_argument("--output-dir", default="output/audio")
+    parser.add_argument(
+        "--recent-days",
+        type=int,
+        help="Z feedu stáhne epizody z posledních N dní. Bez data ve feedu jen nejnovější.",
+    )
     args = parser.parse_args()
-    result = fetch(args.url, Path(args.output_dir))
+    if args.recent_days:
+        result = fetch_recent(args.url, Path(args.output_dir), args.recent_days)
+    else:
+        result = fetch(args.url, Path(args.output_dir))
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
