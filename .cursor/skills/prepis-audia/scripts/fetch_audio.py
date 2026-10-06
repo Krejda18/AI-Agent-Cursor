@@ -2,8 +2,9 @@
 """Stáhne jednu epizodu z odkazu, který uživatel sám vložil.
 
 Nepřijímá název pořadu a nic nevyhledává. Přímý audiosoubor uloží tak, jak je.
-Ze stránky epizody vezme jeden označený zvuk. Z RSS nebo Atom feedu vezme
-položku, na kterou odkaz míří, a když odkaz míří na celý feed, jen nejnovější díl.
+Ze stránky epizody nebo sdíleného přehrávače vezme jeden vložený zvuk a
+sleduje přesměrování až k souboru. Z RSS nebo Atom feedu vezme položku,
+na kterou odkaz míří, a když odkaz míří na celý feed, jen nejnovější díl.
 """
 
 from __future__ import annotations
