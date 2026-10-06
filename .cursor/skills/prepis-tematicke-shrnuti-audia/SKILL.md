@@ -77,4 +77,13 @@ Než nahrávku odešleš, napiš uživateli v odpovědi, kam půjde. U tohoto sk
 - Podmínky, výjimky a nejasnosti zmíněné v audiu.
 - Úplný přepis jen na vyžádání.
 
+## Slack
+
+Když uživatel chce výstup ve Slacku, pošli tam stejné české shrnutí. Úplný přepis do Slacku nedávej, pokud o něj výslovně nepožádá.
+
+- Kanál ber jen z jeho zadání. Když kanál neuvede, ulož koncept do jeho vlastní přímé zprávy nástrojem pro koncept zprávy, ať text před odesláním vidí.
+- Do pojmenovaného kanálu zprávu odešli rovnou jen tehdy, když o odeslání výslovně požádá. Jinak nech koncept.
+- Text piš běžným markdownem. Na začátek dej přímou odpověď, pak body s časy a nakonec podmínky, výjimky a nejasnosti.
+- Do zprávy nepiš klíč k přepisu, cestu k nahrávce ani nic, co v audiu nezaznělo.
+
 Do git commitu nepatří nahrávka, váhy modelu ani soubory z `output/`.
