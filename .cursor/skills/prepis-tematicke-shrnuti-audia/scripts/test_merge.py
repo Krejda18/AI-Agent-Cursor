@@ -36,6 +36,50 @@ def test_merge_drops_overlap_and_rebases() -> None:
     assert merged[2].end == 15.0
 
 
+def test_word_timestamps_drop_overlap() -> None:
+    first = [Segment(0.0, 6.0, "Dobrý den toto je nahrávka")]
+    second = [
+        Segment(
+            0.0,
+            6.0,
+            "nahrávka týká se ochrany",
+            words=[
+                (0.1, 0.8, " nahrávka"),
+                (1.2, 2.0, " týká"),
+                (2.1, 3.0, " se"),
+                (3.2, 4.5, " ochrany"),
+            ],
+        )
+    ]
+    merged = merge_chunks([(0.0, first), (5.0, second)], overlap=1.0)
+    assert [segment.text for segment in merged] == [
+        "Dobrý den toto je nahrávka",
+        "týká se ochrany",
+    ], [segment.text for segment in merged]
+    assert merged[1].start == 6.2
+
+
+def test_keeps_word_past_previous_end_inside_overlap() -> None:
+    first = [Segment(0.0, 5.3, "nahrávka")]
+    second = [
+        Segment(
+            0.0,
+            4.0,
+            "nahrávka týká se",
+            words=[
+                (0.0, 0.4, " nahrávka"),
+                (0.2, 2.1, " týká"),
+                (2.2, 2.8, " se"),
+            ],
+        )
+    ]
+    merged = merge_chunks([(0.0, first), (5.0, second)], overlap=1.0)
+    assert [segment.text for segment in merged] == ["nahrávka", "týká se"], [
+        segment.text for segment in merged
+    ]
+    assert abs(merged[1].start - 5.2) < 0.01
+
+
 def test_duplicate_text() -> None:
     assert is_duplicate("to je konec věty", "to je konec věty")
     assert not is_duplicate("první věta", "úplně jiná věta")
@@ -55,6 +99,8 @@ def test_mark_unintelligible() -> None:
 def main() -> int:
     test_chunk_bounds()
     test_merge_drops_overlap_and_rebases()
+    test_word_timestamps_drop_overlap()
+    test_keeps_word_past_previous_end_inside_overlap()
     test_duplicate_text()
     test_mark_unintelligible()
     print("test_merge: v pořádku")

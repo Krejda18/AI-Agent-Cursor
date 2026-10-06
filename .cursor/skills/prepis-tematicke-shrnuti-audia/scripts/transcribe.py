@@ -37,6 +37,8 @@ class Segment:
     compression_ratio: float = 0.0
     unintelligible: bool = False
     uncertain: bool = False
+    # Časy slov jsou vůči dílu. Do výstupního JSON se neukládají.
+    words: list[tuple[float, float, str]] | None = None
 
     def display_text(self) -> str:
         body = self.text.strip()
@@ -186,6 +188,7 @@ def mark_segment(segment: Segment) -> Segment:
     repetitive = segment.compression_ratio >= HIGH_COMPRESSION
     if no_speech or repetitive or not text:
         segment.text = ""
+        segment.words = None
         segment.unintelligible = True
         segment.uncertain = False
         return segment
@@ -194,32 +197,57 @@ def mark_segment(segment: Segment) -> Segment:
     return segment
 
 
+def take_new_audio(segment: Segment, origin: float, keep_from: float) -> Segment | None:
+    """Zahodí část segmentu, která už byla v předchozím dílu (před keep_from)."""
+    if segment.words:
+        kept = [
+            word
+            for word in segment.words
+            if origin + (word[0] + word[1]) / 2 >= keep_from - 0.05
+        ]
+        if not kept:
+            return None
+        text = "".join(word[2] for word in kept).strip()
+        start = origin + kept[0][0]
+        end = origin + kept[-1][1]
+    else:
+        start = origin + segment.start
+        end = origin + segment.end
+        midpoint = (start + end) / 2
+        if end <= keep_from + 0.05 or midpoint < keep_from - 0.05:
+            return None
+        text = segment.text.strip()
+    if end <= start:
+        return None
+    return Segment(
+        start=round(start, 3),
+        end=round(end, 3),
+        text=text,
+        avg_logprob=segment.avg_logprob,
+        no_speech_prob=segment.no_speech_prob,
+        compression_ratio=segment.compression_ratio,
+        unintelligible=segment.unintelligible or not text,
+        uncertain=segment.uncertain,
+    )
+
+
 def merge_chunks(chunks: list[tuple[float, list[Segment]]], overlap: float) -> list[Segment]:
+    """Spojí díly. Překryv slouží modelu jako kontext; do výstupu jde jen řeč,
+    která začíná až po konci už zařazeného textu.
+    """
+    del overlap  # Délka překryvu je vlastnost řezu, ne hranice mazání.
     merged: list[Segment] = []
-    for index, (origin, segments) in enumerate(chunks):
+    covered_until = 0.0
+    for origin, segments in chunks:
         for segment in segments:
-            start = origin + segment.start
-            end = origin + segment.end
-            if end <= start:
+            fresh = take_new_audio(segment, origin, covered_until)
+            if fresh is None:
                 continue
-            if index > 0 and end <= origin + overlap + 0.05:
-                continue
-            text = segment.text.strip()
-            if merged and text and is_duplicate(merged[-1].text, text):
-                if start <= merged[-1].end + 0.4:
+            if merged and fresh.text and is_duplicate(merged[-1].text, fresh.text):
+                if fresh.start <= merged[-1].end + 0.4:
                     continue
-            merged.append(
-                Segment(
-                    start=round(start, 3),
-                    end=round(end, 3),
-                    text=text,
-                    avg_logprob=segment.avg_logprob,
-                    no_speech_prob=segment.no_speech_prob,
-                    compression_ratio=segment.compression_ratio,
-                    unintelligible=segment.unintelligible,
-                    uncertain=segment.uncertain,
-                )
-            )
+            merged.append(fresh)
+            covered_until = max(covered_until, fresh.end)
     return merged
 
 
@@ -274,7 +302,7 @@ def transcribe_local(wav_path: Path, language: str | None, model) -> tuple[list[
         "vad_filter": True,
         "condition_on_previous_text": True,
         "temperature": 0.0,
-        "word_timestamps": False,
+        "word_timestamps": True,
     }
     if language:
         kwargs["language"] = language
@@ -282,6 +310,10 @@ def transcribe_local(wav_path: Path, language: str | None, model) -> tuple[list[
         segments_iter, info = model.transcribe(str(wav_path), **kwargs)
         segments = []
         for raw in segments_iter:
+            words = [
+                (float(word.start), float(word.end), word.word)
+                for word in (getattr(raw, "words", None) or [])
+            ]
             segments.append(
                 mark_segment(
                     Segment(
@@ -291,6 +323,7 @@ def transcribe_local(wav_path: Path, language: str | None, model) -> tuple[list[
                         avg_logprob=float(raw.avg_logprob),
                         no_speech_prob=float(raw.no_speech_prob),
                         compression_ratio=float(getattr(raw, "compression_ratio", 0.0) or 0.0),
+                        words=words or None,
                     )
                 )
             )
@@ -483,7 +516,11 @@ def main(argv: list[str] | None = None) -> int:
             "overlap_seconds": args.overlap_seconds if len(bounds) > 1 else 0.0,
         },
         "segments": [
-            {**asdict(segment), "display_text": segment.display_text()} for segment in merged
+            {
+                **{key: value for key, value in asdict(segment).items() if key != "words"},
+                "display_text": segment.display_text(),
+            }
+            for segment in merged
         ],
     }
     text = render_text(merged)
