@@ -79,11 +79,14 @@ Než nahrávku odešleš, napiš uživateli v odpovědi, kam půjde. U tohoto sk
 
 ## Slack
 
-Když uživatel chce výstup ve Slacku, pošli tam stejné české shrnutí. Úplný přepis do Slacku nedávej, pokud o něj výslovně nepožádá.
+Veřejný kanál `#prepis-audia` (`C0C78B1UKBK`) je vyhrazený jen tomuto skillu. Když tě spustí zpráva z tohoto kanálu, dělej pouze přepis a tematické shrnutí. Jiný úkol odmítni jednou větou a požádej o nahrávku a o to, co se z ní má získat.
 
-- Kanál ber jen z jeho zadání. Když kanál neuvede, ulož koncept do jeho vlastní přímé zprávy nástrojem pro koncept zprávy, ať text před odesláním vidí.
-- Do pojmenovaného kanálu zprávu odešli rovnou jen tehdy, když o odeslání výslovně požádá. Jinak nech koncept.
+Odpověz ve vlákně té zprávy, která tě zavolala. České shrnutí pošli tam. Úplný přepis do Slacku nedávej, pokud o něj výslovně nepožádá.
+
+- Mimo tento kanál ber cílový kanál jen ze zadání. Když kanál neuvede, ulož koncept do jeho vlastní přímé zprávy, ať text před odesláním vidí.
+- Do jiného pojmenovaného kanálu zprávu odešli rovnou jen tehdy, když o odeslání výslovně požádá.
 - Text piš běžným markdownem. Na začátek dej přímou odpověď, pak body s časy a nakonec podmínky, výjimky a nejasnosti.
 - Do zprávy nepiš klíč k přepisu, cestu k nahrávce ani nic, co v audiu nezaznělo.
+- Kód v repozitáři neměň a pull request nezakládej, pokud o to uživatel ve stejné zprávě výslovně nepožádá.
 
 Do git commitu nepatří nahrávka, váhy modelu ani soubory z `output/`.
