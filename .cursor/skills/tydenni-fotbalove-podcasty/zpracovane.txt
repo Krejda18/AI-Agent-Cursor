@@ -1,2 +1,26 @@
 # Už přepsané epizody. Každý řádek je media_url z výstupu fetch_audio.py.
 # Skill sem řádek přidá až po hotovém přepisu, aby se stejný díl příští týden nestahoval znovu.
+https://anchor.fm/s/dae9c5c/podcast/play/126553484/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-8-30%2Fe0cca103-761e-1f7d-18a7-e1dc8cce09f3.mp3
+https://media.pod.space/rabona/500_261006.mp3
+https://media.pod.space/rabona/499_lyttersporsmal_var_freyr_vs_horneland_og_relasjoner_del_2_av_2_260930.mp3
+https://sphinx.acast.com/p/open/s/6441651b7301040011957508/e/6ac37e0f0d8a484144cb0410/media.mp3
+https://sphinx.acast.com/p/open/s/6441651b7301040011957508/e/6ac3afe65f53b6c30cf033ae/media.mp3
+https://sphinx.acast.com/p/open/s/6441651b7301040011957508/e/6abf9f56b06169dc72250b35/media.mp3
+https://sphinx.acast.com/p/open/s/6441651b7301040011957508/e/6abfc14152f9e4485f07ed63/media.mp3
+https://sphinx.acast.com/p/open/s/6441651b7301040011957508/e/6abcd87c06846f55a316fef2/media.mp3
+https://sphinx.acast.com/p/open/s/6441651b7301040011957508/e/6abd163a205819f3d7c505fa/media.mp3
+https://sphinx.acast.com/p/open/s/677d65131f00b28b23b9d6c6/e/6ac4b08baef0446505ab10ed/media.mp3
+https://sphinx.acast.com/p/open/s/677d65131f00b28b23b9d6c6/e/6ac4ab5d924bc02b559389e0/media.mp3
+https://sphinx.acast.com/p/open/s/677d65131f00b28b23b9d6c6/e/6ac35b601b614c9be0a3f372/media.mp3
+https://sphinx.acast.com/p/open/s/677d65131f00b28b23b9d6c6/e/6ac208c68da1db2e6f5b66ef/media.mp3
+https://sphinx.acast.com/p/open/s/677d65131f00b28b23b9d6c6/e/6ac0cae55558f9dbe2b19499/media.mp3
+https://sphinx.acast.com/p/open/s/677d65131f00b28b23b9d6c6/e/6abf742c235a8e6af38cd36d/media.mp3
+https://sphinx.acast.com/p/open/s/677d65131f00b28b23b9d6c6/e/6abe193bf06e2ab6b7b87159/media.mp3
+https://sphinx.acast.com/p/open/s/677d65131f00b28b23b9d6c6/e/6abccc7858bacc11cb7b3088/media.mp3
+https://sphinx.acast.com/p/acast/s/studioallsvenskan/e/6ac3928a32d92567308f4b10/media.mp3
+https://sphinx.acast.com/p/acast/s/studioallsvenskan/e/6ac35fbbab90e256c32c5cf5/media.mp3
+https://sphinx.acast.com/p/acast/s/studioallsvenskan/e/6abf9390235a8e6af39758a0/media.mp3
+https://sphinx.acast.com/p/acast/s/studioallsvenskan/e/6abf6fb401239e8aeef43a89/media.mp3
+https://sphinx.acast.com/p/acast/s/studioallsvenskan/e/6abf5f04f5a87132b39646af/media.mp3
+https://sphinx.acast.com/p/acast/s/studioallsvenskan/e/6aba5fec8ec4e79ce6d3c25b/media.mp3
+https://sphinx.acast.com/p/acast/s/studioallsvenskan/e/6abccc8858bacc11cb7b3343/media.mp3

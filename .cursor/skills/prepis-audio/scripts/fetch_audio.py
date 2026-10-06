@@ -25,7 +25,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 MAX_BYTES = 500 * 1024 * 1024
-SNIFF_BYTES = 2 * 1024 * 1024
+SNIFF_BYTES = 20 * 1024 * 1024
 USER_AGENT = "prepis-audio/1.0"
 AUDIO_EXT = {".mp3", ".m4a", ".m4b", ".mp4", ".aac", ".ogg", ".oga", ".wav", ".opus", ".flac", ".webm"}
 OG_AUDIO = {"og:audio", "og:audio:url", "og:audio:secure_url", "twitter:player:stream"}
@@ -148,7 +148,9 @@ def read_capped(response, limit: int) -> bytes:
             break
         total += len(block)
         if total > limit:
-            fail(2, "Soubor z odkazu je větší než 500 MB. Přepis jsem nespustil.")
+            if limit >= MAX_BYTES:
+                fail(2, "Soubor z odkazu je větší než 500 MB. Přepis jsem nespustil.")
+            fail(2, "Stránka nebo feed je větší, než umím přečíst. Přepis jsem nespustil.")
         chunks.append(block)
     return b"".join(chunks)
 
