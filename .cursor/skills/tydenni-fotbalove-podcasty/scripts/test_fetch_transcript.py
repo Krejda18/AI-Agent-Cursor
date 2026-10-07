@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kontroly textového přepisu. Audio se z feedu nestahuje."""
+"""Kontroly stažení přepisu přes PodscriptAPI. Audio se z feedu nestahuje."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import json
 import shutil
 import sys
 import threading
+import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -18,33 +19,48 @@ import fetch_transcript
 
 class Handler(BaseHTTPRequestHandler):
     pages: dict[str, tuple[int, str, bytes]] = {}
-    seen: list[str] = []
+    routes: dict[tuple[str, str], object] = {}
+    seen: list[tuple[str, str]] = []
+    posts: list[bytes] = []
+    auth = "Bearer test-token"
 
     def do_GET(self) -> None:
-        self.seen.append(self.path)
+        self.seen.append(("GET", self.path))
         path = self.path.split("?", 1)[0]
-        if path == "/episodes/search/by/feed-and-guid":
-            auth = self.headers.get("Authorization") or ""
-            if auth != "Bearer test-token":
-                body = b'{"message":"unauthorized"}'
-                self._send(401, "application/json", body)
-                return
-            body = json.dumps(
-                {"podcast": None, "suggested_feed": False, "episodes": [{"episode_id": "ep_1"}]}
-            ).encode()
-            self._send(200, "application/json", body)
+        if path in self.pages:
+            status, mime, body = self.pages[path]
+            self._send(status, mime, body)
             return
-        if path == "/episodes/ep_1/transcript/download":
-            body = b"WEBVTT\n\n00:10:00.000 --> 00:10:04.000\nViking ma penize\n"
-            self._send(200, "text/vtt", body)
-            return
-        item = self.pages.get(path, (404, "text/plain", b"missing"))
-        self._send(item[0], item[1], item[2])
+        self._api("GET", path)
 
-    def _send(self, status: int, mime: str, body: bytes) -> None:
+    def do_POST(self) -> None:
+        length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length)
+        self.seen.append(("POST", self.path))
+        self.posts.append(raw)
+        path = self.path.split("?", 1)[0]
+        self._api("POST", path)
+
+    def _api(self, method: str, path: str) -> None:
+        auth = self.headers.get("Authorization") or ""
+        if auth != self.auth:
+            self._send(401, "application/json", b'{"message":"unauthorized"}')
+            return
+        item = self.routes.get((method, path))
+        if item is None:
+            self._send(404, "application/json", b'{"message":"missing"}')
+            return
+        if callable(item):
+            item = item()
+        status, body, headers = item
+        self._send(status, "application/json", body, headers)
+
+    def _send(self, status: int, mime: str, body: bytes, headers: dict | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(body)))
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -52,9 +68,11 @@ class Handler(BaseHTTPRequestHandler):
         return
 
 
-def serve(pages: dict[str, tuple[int, str, bytes]]) -> tuple[ThreadingHTTPServer, str]:
-    Handler.pages = pages
+def serve() -> tuple[ThreadingHTTPServer, str]:
+    Handler.pages = {}
+    Handler.routes = {}
     Handler.seen = []
+    Handler.posts = []
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -64,188 +82,268 @@ def serve(pages: dict[str, tuple[int, str, bytes]]) -> tuple[ThreadingHTTPServer
 
 def feed(base: str) -> bytes:
     return f"""<?xml version="1.0"?>
-<rss xmlns:podcast="https://podcastindex.org/namespace/1.0" version="2.0">
+<rss version="2.0">
 <channel>
-<item>
-  <title>Novy</title>
-  <guid>g-new</guid>
-  <link>{base}/novy-clanek</link>
-  <enclosure url="{base}/novy.mp3" type="audio/mpeg"/>
-  <pubDate>Tue, 06 Oct 2026 12:00:00 GMT</pubDate>
-  <podcast:transcript url="{base}/novy.vtt" type="text/vtt"/>
-</item>
-<item>
-  <title>Z popisu</title>
-  <guid>g-popis</guid>
-  <enclosure url="{base}/popis.mp3" type="audio/mpeg"/>
-  <pubDate>Mon, 05 Oct 2026 12:00:00 GMT</pubDate>
-  <description>Přepis je na {base}/z-popisu.srt a zvuk nech být.</description>
-</item>
-<item>
-  <title>Ze stranky</title>
-  <guid>g-page</guid>
-  <link>{base}/stranka</link>
-  <enclosure url="{base}/stranka.mp3" type="audio/mpeg"/>
-  <pubDate>Sun, 04 Oct 2026 12:00:00 GMT</pubDate>
-</item>
-<item>
-  <title>Bez textu</title>
-  <guid>g-none</guid>
-  <enclosure url="{base}/bez.mp3" type="audio/mpeg"/>
-  <pubDate>Sat, 03 Oct 2026 12:00:00 GMT</pubDate>
-</item>
 <item>
   <title>Stary</title>
   <guid>g-old</guid>
   <enclosure url="{base}/stary.mp3" type="audio/mpeg"/>
-  <pubDate>Tue, 01 Sep 2026 12:00:00 GMT</pubDate>
-  <podcast:transcript url="{base}/stary.vtt" type="text/vtt"/>
+  <pubDate>Mon, 05 Oct 2026 12:00:00 GMT</pubDate>
 </item>
 <item>
-  <title>Podscan</title>
-  <guid>g-pod</guid>
-  <enclosure url="{base}/pod.mp3" type="audio/mpeg"/>
-  <pubDate>Fri, 02 Oct 2026 12:00:00 GMT</pubDate>
+  <title>Novy</title>
+  <guid>g-new</guid>
+  <enclosure url="{base}/novy.mp3" type="audio/mpeg"/>
+  <pubDate>Tue, 06 Oct 2026 12:00:00 GMT</pubDate>
 </item>
 </channel>
 </rss>
 """.encode()
 
 
-def test_text_marks() -> None:
-    text = fetch_transcript.vtt_or_srt_to_text(
-        "WEBVTT\n\n01:09:02.000 --> 01:09:08.000\n<v Host>Malmö má sto milionů\n"
-    )
-    assert "[1:09:02] Malmö má sto milionů" in text, text
-    srt = fetch_transcript.vtt_or_srt_to_text(
-        "1\n00:02:00,000 --> 00:02:03,000\nBrann má dluh\n"
-    )
-    assert "[02:00] Brann má dluh" in srt, srt
-
-
-def test_feed(base: str, tmp: Path) -> None:
-    now = datetime(2026, 10, 6, tzinfo=timezone.utc)
-    rows = fetch_transcript.fetch_recent_transcripts(
-        f"{base}/feed.xml",
-        tmp,
-        7,
-        allow_private=True,
-        now=now,
-        api_key="",
-    )
-    by_title = {row["title"]: row for row in rows}
-    assert set(by_title) == {"Novy", "Z popisu", "Ze stranky", "Bez textu", "Podscan"}, set(by_title)
-    assert by_title["Novy"]["status"] == "saved"
-    assert by_title["Novy"]["source"] == "rss"
-    assert "[01:05] Malmö má peníze" in Path(by_title["Novy"]["path"]).read_text(encoding="utf-8")
-    assert by_title["Z popisu"]["source"] == "popis"
-    assert "[02:00] Brann má dluh" in Path(by_title["Z popisu"]["path"]).read_text(encoding="utf-8")
-    assert by_title["Ze stranky"]["source"] == "stranka"
-    assert "[03:00] mladý hráč" in Path(by_title["Ze stranky"]["path"]).read_text(encoding="utf-8")
-    assert by_title["Bez textu"]["status"] == "missing"
-    assert by_title["Podscan"]["status"] == "missing"
-    assert "PODSCAN_API_KEY" in by_title["Podscan"]["reason"]
-    assert not any(path.split("?", 1)[0].endswith(".mp3") for path in Handler.seen), Handler.seen
-    assert not any(path.endswith("stary.vtt") for path in Handler.seen)
-
-
-def test_podscan(base: str, tmp: Path) -> None:
-    now = datetime(2026, 10, 6, tzinfo=timezone.utc)
-    rows = fetch_transcript.fetch_recent_transcripts(
-        f"{base}/feed.xml",
-        tmp,
-        7,
-        allow_private=True,
-        now=now,
-        api_key="test-token",
-        podscan_base=base,
-    )
-    pod = next(row for row in rows if row["title"] == "Podscan")
-    assert pod["status"] == "saved", pod
-    assert pod["source"] == "podscan"
-    assert "[10:00] Viking ma penize" in Path(pod["path"]).read_text(encoding="utf-8")
-    assert not any(path.split("?", 1)[0].endswith(".mp3") for path in Handler.seen), Handler.seen
-
-
-def ready_feed(base: str) -> bytes:
+def title_feed(base: str) -> bytes:
     return f"""<?xml version="1.0"?>
-<rss xmlns:podcast="https://podcastindex.org/namespace/1.0" version="2.0">
+<rss version="2.0">
 <channel>
 <item>
-  <title>Ceka</title>
-  <guid>g-ceka</guid>
-  <enclosure url="{base}/ceka.mp3" type="audio/mpeg"/>
-  <pubDate>Tue, 06 Oct 2026 18:00:00 GMT</pubDate>
-</item>
-<item>
-  <title>Hotovy</title>
-  <guid>g-hotovy</guid>
-  <enclosure url="{base}/hotovy.mp3" type="audio/mpeg"/>
-  <pubDate>Tue, 06 Oct 2026 08:00:00 GMT</pubDate>
-  <podcast:transcript url="{base}/hotovy.vtt" type="text/vtt"/>
-</item>
-<item>
-  <title>Volny text</title>
-  <guid>g-volny</guid>
-  <enclosure url="{base}/volny.mp3" type="audio/mpeg"/>
-  <pubDate>Mon, 05 Oct 2026 12:00:00 GMT</pubDate>
-  <podcast:transcript url="{base}/volny.vtt" type="text/vtt"/>
+  <title>Jen nazev</title>
+  <enclosure url="{base}/nazev.mp3" type="audio/mpeg"/>
+  <pubDate>Tue, 06 Oct 2026 12:00:00 GMT</pubDate>
 </item>
 </channel>
 </rss>
 """.encode()
 
 
-def test_ready_only(base: str, tmp: Path) -> None:
-    tmp.mkdir(parents=True, exist_ok=True)
-    processed = tmp / "zpracovane.txt"
-    processed.write_text(f"# hotovo\n{base}/hotovy.mp3\n", encoding="utf-8")
-    now = datetime(2026, 10, 6, tzinfo=timezone.utc)
-    rows = fetch_transcript.fetch_recent_transcripts(
-        f"{base}/ready.xml",
-        tmp / "out",
-        31,
-        allow_private=True,
-        now=now,
-        api_key="",
-        processed_urls=fetch_transcript.load_processed(processed),
-        ready_only=True,
+def clock():
+    state = {"t": 0.0}
+    sleeps: list[float] = []
+
+    def monotonic() -> float:
+        return state["t"]
+
+    def sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        state["t"] += seconds
+
+    return monotonic, sleep, sleeps
+
+
+def completed(text: str = "Castellón vede.") -> dict:
+    return {
+        "id": "job-12345678",
+        "status": "completed",
+        "source": "asr",
+        "language": "es",
+        "text": text,
+        "segments": [{"start": 65000, "end": 69000, "text": text}],
+    }
+
+
+def test_segments() -> None:
+    text = fetch_transcript.segments_to_text(
+        [{"start": 4142000, "end": 4148000, "speaker": "Host", "text": "Malmö má sto milionů"}]
     )
-    assert len(rows) == 1, rows
-    assert rows[0]["title"] == "Volny text", rows
-    assert rows[0]["status"] == "saved"
-    assert "[04:00] KuPS má peníze" in Path(rows[0]["path"]).read_text(encoding="utf-8")
-    assert not any(path.split("?", 1)[0].endswith(".mp3") for path in Handler.seen), Handler.seen
-    assert not any(path.endswith("hotovy.vtt") for path in Handler.seen)
+    assert "[1:09:02] Host: Malmö má sto milionů" in text, text
+    plain = fetch_transcript.segments_to_text([{"start": 0, "end": 0, "text": "bez času"}])
+    assert plain.strip() == "bez času", plain
+    assert "[" not in plain
+
+
+def test_latest(base: str, tmp: Path) -> None:
+    Handler.routes[("POST", "/v1/transcripts")] = (202, b'{"id":"job-12345678","status":"processing"}', {})
+    Handler.routes[("GET", "/v1/transcripts/job-12345678")] = (
+        200,
+        json.dumps(completed()).encode(),
+        {},
+    )
+    monotonic, sleep, sleeps = clock()
+    row = fetch_transcript.fetch_show_transcript(
+        f"{base}/feed.xml",
+        tmp,
+        allow_private=True,
+        api_key="test-token",
+        podscript_base=base,
+        jobs_file=tmp / "probihajici.txt",
+        sleep=sleep,
+        monotonic=monotonic,
+        max_wait=30,
+    )
+    assert row["status"] == "saved", row
+    assert row["title"] == "Novy", row
+    assert row["source"] == "podscript"
+    assert row["podscript_source"] == "asr"
+    assert row["language"] == "es"
+    assert "[01:05] Castellón vede." in Path(row["path"]).read_text(encoding="utf-8")
+    assert len(Handler.posts) == 1, Handler.posts
+    sent = json.loads(Handler.posts[0].decode())
+    assert sent["url"] == f"{base}/feed.xml"
+    assert sent["episode"] == {"guid": "g-new"}
+    assert "webhook_url" not in sent
+    dumped = json.dumps(row)
+    assert "test-token" not in dumped
+    assert "Castellón vede." not in dumped
+    assert not any(path.endswith(".mp3") for _method, path in Handler.seen), Handler.seen
+    assert sleeps == [5], sleeps
+    assert not (tmp / "probihajici.txt").read_text(encoding="utf-8").strip().endswith("novy.mp3")
+
+
+def test_processed_skips_api(base: str, tmp: Path) -> None:
+    processed = tmp / "zpracovane.txt"
+    processed.write_text(f"# hotovo\n{base}/novy.mp3\n", encoding="utf-8")
+    row = fetch_transcript.fetch_show_transcript(
+        f"{base}/feed.xml",
+        tmp / "out",
+        allow_private=True,
+        api_key="test-token",
+        podscript_base=base,
+        processed_urls=fetch_transcript.load_processed(processed),
+    )
+    assert row["status"] == "processed", row
+    assert row["title"] == "Novy"
+    assert row["path"] is None
+    assert Handler.posts == []
+    assert not any(method == "POST" for method, _path in Handler.seen), Handler.seen
+
+
+def test_resume_job(base: str, tmp: Path) -> None:
+    jobs = tmp / "probihajici.txt"
+    jobs.write_text(f"job-12345678 {base}/novy.mp3\n", encoding="utf-8")
+    Handler.routes[("GET", "/v1/transcripts/job-12345678")] = (
+        200,
+        json.dumps(completed("už hotovo")).encode(),
+        {},
+    )
+    monotonic, sleep, sleeps = clock()
+    row = fetch_transcript.fetch_show_transcript(
+        f"{base}/feed.xml",
+        tmp / "out",
+        allow_private=True,
+        api_key="test-token",
+        podscript_base=base,
+        jobs_file=jobs,
+        sleep=sleep,
+        monotonic=monotonic,
+    )
+    assert row["status"] == "saved", row
+    assert "už hotovo" in Path(row["path"]).read_text(encoding="utf-8")
+    assert Handler.posts == []
+    assert sleeps == []
+    assert "job-12345678" not in jobs.read_text(encoding="utf-8")
+
+
+def test_processing_keeps_job(base: str, tmp: Path) -> None:
+    Handler.routes[("POST", "/v1/transcripts")] = (202, b'{"id":"job-12345678","status":"processing"}', {})
+    row = fetch_transcript.fetch_show_transcript(
+        f"{base}/feed.xml",
+        tmp,
+        allow_private=True,
+        api_key="test-token",
+        podscript_base=base,
+        jobs_file=tmp / "probihajici.txt",
+        sleep=lambda _seconds: None,
+        monotonic=lambda: 0.0,
+        max_wait=0,
+    )
+    assert row["status"] == "processing", row
+    assert row["job_id"] == "job-12345678"
+    assert row["path"] is None
+    stored = (tmp / "probihajici.txt").read_text(encoding="utf-8")
+    assert f"job-12345678 {base}/novy.mp3" in stored
+    assert len(Handler.posts) == 1
+
+
+def test_title_when_guid_missing(base: str, tmp: Path) -> None:
+    Handler.routes[("POST", "/v1/transcripts")] = (200, json.dumps(completed("podle názvu")).encode(), {})
+    row = fetch_transcript.fetch_show_transcript(
+        f"{base}/nazev.xml",
+        tmp,
+        allow_private=True,
+        api_key="test-token",
+        podscript_base=base,
+        sleep=lambda _seconds: None,
+        monotonic=lambda: 0.0,
+    )
+    assert row["status"] == "saved", row
+    sent = json.loads(Handler.posts[0].decode())
+    assert sent["episode"] == {"title": "Jen nazev"}
+
+
+def test_rate_limit_does_not_wait(base: str, tmp: Path) -> None:
+    Handler.routes[("POST", "/v1/transcripts")] = (429, b'{"message":"slow"}', {"Retry-After": "36000"})
+    sleeps: list[float] = []
+    started = time.monotonic()
+    row = fetch_transcript.fetch_show_transcript(
+        f"{base}/feed.xml",
+        tmp,
+        allow_private=True,
+        api_key="test-token",
+        podscript_base=base,
+        sleep=lambda seconds: sleeps.append(seconds),
+        monotonic=time.monotonic,
+    )
+    assert row["status"] == "missing", row
+    assert "36000" not in (row["reason"] or "")
+    assert "test-token" not in json.dumps(row)
+    assert sleeps == []
+    assert time.monotonic() - started < 3
+
+
+def test_unauthorized(base: str, tmp: Path) -> None:
+    row = fetch_transcript.fetch_show_transcript(
+        f"{base}/feed.xml",
+        tmp,
+        allow_private=True,
+        api_key="psk_live_tajny",
+        podscript_base=base,
+    )
+    assert row["status"] == "missing", row
+    assert "psk_live_tajny" not in json.dumps(row)
+    assert "klíč odmítl" in row["reason"]
+
+
+def test_missing_key() -> None:
+    try:
+        fetch_transcript.fetch_show_transcript(
+            "https://example.com/feed.xml",
+            Path("/tmp/unused"),
+            api_key="",
+        )
+    except SystemExit as exc:
+        assert exc.code == 3
+        return
+    raise AssertionError("chybějící klíč měl běh zastavit")
 
 
 def main() -> None:
-    test_text_marks()
+    test_segments()
+    test_missing_key()
     tmp = Path("/tmp/tydenni-transcript-test")
     shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir()
-    pages = {
-        "/novy.vtt": (200, "text/vtt", b"WEBVTT\n\n00:01:05.000 --> 00:01:08.000\nMalm\xc3\xb6 m\xc3\xa1 pen\xc3\xadze\n"),
-        "/z-popisu.srt": (200, "application/x-subrip", "1\n00:02:00,000 --> 00:02:03,000\nBrann má dluh\n".encode()),
-        "/stranka": (
-            200,
-            "text/html",
-            b'<html><a href="/ze-stranky.vtt">transcript</a></html>',
-        ),
-        "/ze-stranky.vtt": (200, "text/vtt", "WEBVTT\n\n00:03:00.000 --> 00:03:02.000\nmladý hráč\n".encode()),
-        "/stary.vtt": (200, "text/vtt", "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nstarý\n".encode()),
-        "/hotovy.vtt": (200, "text/vtt", "WEBVTT\n\n00:01:00.000 --> 00:01:02.000\nuz hotovo\n".encode()),
-        "/volny.vtt": (200, "text/vtt", "WEBVTT\n\n00:04:00.000 --> 00:04:03.000\nKuPS má peníze\n".encode()),
-    }
-    server, base = serve(pages)
-    pages["/feed.xml"] = (200, "application/rss+xml", feed(base))
-    pages["/ready.xml"] = (200, "application/rss+xml", ready_feed(base))
+    server, base = serve()
+    Handler.pages["/feed.xml"] = (200, "application/rss+xml", feed(base))
+    Handler.pages["/nazev.xml"] = (200, "application/rss+xml", title_feed(base))
     try:
-        test_feed(base, tmp / "a")
+        test_latest(base, tmp / "a")
         Handler.seen = []
-        test_podscan(base, tmp / "b")
+        Handler.posts = []
+        test_processed_skips_api(base, tmp / "b")
         Handler.seen = []
-        test_ready_only(base, tmp / "c")
+        Handler.posts = []
+        test_resume_job(base, tmp / "c")
+        Handler.seen = []
+        Handler.posts = []
+        test_processing_keeps_job(base, tmp / "d")
+        Handler.seen = []
+        Handler.posts = []
+        test_title_when_guid_missing(base, tmp / "e")
+        Handler.seen = []
+        Handler.posts = []
+        test_rate_limit_does_not_wait(base, tmp / "f")
+        Handler.seen = []
+        Handler.posts = []
+        test_unauthorized(base, tmp / "g")
     finally:
         server.shutdown()
     print("test_fetch_transcript: v pořádku")

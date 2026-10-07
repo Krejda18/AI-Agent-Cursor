@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Najde celý textový přepis dílu. Audio nestahuje.
+"""Stáhne přepis nejnovějšího dílu přes PodscriptAPI. Audio nestahuje.
 
-Pořadí: odkaz podcast:transcript ve feedu, odkaz na přepis v popisu,
-odkaz na stránce dílu, a když je v prostředí PODSCAN_API_KEY, celý
-přepis z Podscanu podle RSS a guid. Bez textu díl zůstane missing.
+Z feedu vezme jen nejnovější díl. Když už je jeho adresa ve zpracovaných,
+API se nevolá. Rozdělané job_id se jen dotáhne přes GET a druhý přepis
+se nespouští. Klíč se nikam nezapisuje a text přepisu se tiskne jen do souboru.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -28,13 +28,11 @@ sys.path.insert(0, str(SCRIPTS))
 
 import fetch_audio  # noqa: E402
 
-PODSCAN_BASE = "https://podscan.fm/api/v1"
+PODSCRIPT_BASE = "https://podscriptapi.com/api"
 TEXT_LIMIT = 20 * 1024 * 1024
-TRANSCRIPT_EXT = {".vtt", ".srt", ".ttml"}
-URL_RE = re.compile(r"https?://[^\s\"'<>]+", re.I)
-TIME_RE = re.compile(
-    r"(?P<h>\d{1,2}):(?P<m>\d{2}):(?P<s>\d{2})(?:[.,](?P<ms>\d{1,3}))?"
-)
+POLL_INTERVAL_SEC = 5
+POLL_MAX_SEC = 480
+JOB_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,80}$")
 
 
 def fail(code: int, message: str) -> None:
@@ -42,219 +40,55 @@ def fail(code: int, message: str) -> None:
     raise SystemExit(code)
 
 
-def unescape_url(value: str) -> str:
-    return html.unescape(value).rstrip(").,]}>\"'")
-
-
-def is_audio_url(url: str) -> bool:
-    return fetch_audio.has_audio_ext(url)
-
-
-def is_transcript_url(url: str) -> bool:
-    if is_audio_url(url):
-        return False
-    path = urllib.parse.urlsplit(url).path.lower()
-    suffix = Path(path).suffix
-    if suffix in TRANSCRIPT_EXT:
-        return True
-    return "transcript" in path
-
-
-def stamp_from_clock(value: str) -> str | None:
-    match = TIME_RE.search(value.strip())
-    if not match:
-        return None
-    minutes = int(match.group("h")) * 60 + int(match.group("m"))
-    seconds = int(match.group("s"))
-    if minutes >= 60:
-        hours, minutes = divmod(minutes, 60)
+def stamp_from_ms(value: int) -> str:
+    total = value // 1000
+    hours, rem = divmod(total, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if hours:
         return f"{hours}:{minutes:02d}:{seconds:02d}"
     return f"{minutes:02d}:{seconds:02d}"
 
 
-def cues_to_text(cues: list[tuple[str, str]]) -> str:
-    lines: list[str] = []
-    for start, text in cues:
-        cleaned = re.sub(r"\s+", " ", text).strip()
-        cleaned = re.sub(r"</?[^>]+>", "", cleaned).strip()
-        if cleaned:
-            lines.append(f"[{start}] {cleaned}")
-    return "\n".join(lines) + ("\n" if lines else "")
-
-
-def vtt_or_srt_to_text(body: str) -> str:
-    cues: list[tuple[str, str]] = []
-    current_time: str | None = None
-    buffer: list[str] = []
-
-    def flush() -> None:
-        nonlocal current_time, buffer
-        if current_time and buffer:
-            cues.append((current_time, " ".join(buffer)))
-        current_time = None
-        buffer = []
-
-    for raw in body.splitlines():
-        line = raw.strip()
-        if not line or line.upper() == "WEBVTT" or line.startswith(("NOTE", "STYLE", "REGION")):
-            flush()
+def segments_to_text(segments: list) -> str:
+    rows: list[tuple[str | None, str]] = []
+    any_time = False
+    for segment in segments:
+        if not isinstance(segment, dict):
             continue
-        if "-->" in line:
-            flush()
-            current_time = stamp_from_clock(line.split("-->", 1)[0])
+        text = re.sub(r"\s+", " ", str(segment.get("text") or "")).strip()
+        if not text:
             continue
-        if re.fullmatch(r"\d+", line):
-            continue
-        if current_time:
-            spoken = re.sub(r"^<v(?:\.[^ >]+)?(?:\s+[^>]+)?>", "", line)
-            spoken = spoken.replace("</v>", "")
-            buffer.append(spoken)
-    flush()
-    if cues:
-        return cues_to_text(cues)
-    plain = "\n".join(line.strip() for line in body.splitlines() if line.strip())
-    return plain + ("\n" if plain else "")
-
-
-def html_to_text(body: str) -> str:
-    without = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", body)
-    without = re.sub(r"(?i)<br\s*/?>", "\n", without)
-    without = re.sub(r"(?i)</p>", "\n", without)
-    without = re.sub(r"<[^>]+>", " ", without)
-    text = html.unescape(without)
-    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
-    kept = [line for line in lines if line]
-    return "\n".join(kept) + ("\n" if kept else "")
-
-
-def to_text(body: bytes, mime: str, url: str) -> str:
-    raw = body.decode("utf-8", errors="replace")
-    path = urllib.parse.urlsplit(url).path.lower()
-    kind = mime.split(";", 1)[0].strip().lower()
-    if path.endswith((".vtt", ".srt")) or kind in {"text/vtt", "application/x-subrip"}:
-        return vtt_or_srt_to_text(raw)
-    if "html" in kind or path.endswith((".html", ".htm")):
-        return html_to_text(raw)
-    if path.endswith(".json") or kind == "application/json":
         try:
-            payload = json.loads(raw)
-        except json.JSONDecodeError:
-            return raw if raw.strip() else ""
-        segments = payload.get("segments") if isinstance(payload, dict) else None
-        if isinstance(segments, list):
-            cues: list[tuple[str, str]] = []
-            for segment in segments:
-                if not isinstance(segment, dict):
-                    continue
-                start = segment.get("startTime") or segment.get("start")
-                body_text = segment.get("body") or segment.get("text") or ""
-                if start is None or not str(body_text).strip():
-                    continue
-                mark = stamp_from_clock(str(start)) or str(start)
-                cues.append((mark, str(body_text)))
-            if cues:
-                return cues_to_text(cues)
-        return raw if raw.strip() else ""
-    if path.endswith(".ttml") or "ttml" in kind or "<tt" in raw[:200]:
-        pieces = re.findall(r"<p\b([^>]*)>(.*?)</p>", raw, flags=re.I | re.S)
-        cues = []
-        for attrs, inner in pieces:
-            begin = re.search(r'begin="([^"]+)"', attrs)
-            text = re.sub(r"<[^>]+>", " ", inner)
-            mark = stamp_from_clock(begin.group(1)) if begin else None
-            if mark and text.strip():
-                cues.append((mark, text))
-        if cues:
-            return cues_to_text(cues)
-    return vtt_or_srt_to_text(raw) if "-->" in raw else (raw if raw.strip() else "")
+            start_ms = int(segment.get("start") or 0)
+            end_ms = int(segment.get("end") or 0)
+        except (TypeError, ValueError):
+            start_ms = 0
+            end_ms = 0
+        mark = stamp_from_ms(start_ms) if start_ms > 0 or end_ms > 0 else None
+        if mark:
+            any_time = True
+        speaker = str(segment.get("speaker") or "").strip()
+        if speaker:
+            text = f"{speaker}: {text}"
+        rows.append((mark, text))
+    if not rows:
+        return ""
+    if not any_time:
+        return "\n".join(text for _mark, text in rows) + "\n"
+    lines = [f"[{mark}] {text}" if mark else text for mark, text in rows]
+    return "\n".join(lines) + "\n"
 
 
-def read_text_url(url: str, allow_private: bool) -> tuple[bytes, str]:
-    with fetch_audio.open_url(url, allow_private) as response:
-        final = response.geturl()
-        mime = fetch_audio.content_type(response.headers.get("Content-Type"))
-        body = fetch_audio.read_capped(response, TEXT_LIMIT)
-    return body, mime or final
-
-
-def item_transcript_urls(element: ElementTree.Element) -> list[tuple[str, str]]:
-    found: list[tuple[str, str]] = []
-    seen: set[str] = set()
-    for child in element.iter():
-        if fetch_audio.local_name(child.tag) != "transcript":
-            continue
-        url = child.get("url")
-        if url:
-            clean = html.unescape(url.strip())
-            if clean not in seen and is_transcript_url(clean):
-                found.append((clean, "rss"))
-                seen.add(clean)
-    blob = html.unescape(ElementTree.tostring(element, encoding="unicode"))
-    for match in URL_RE.findall(blob):
-        url = unescape_url(match)
-        if is_transcript_url(url) and url not in seen:
-            found.append((url, "popis"))
-            seen.add(url)
-    return found
-
-
-def page_transcript_urls(page_url: str, page: str) -> list[str]:
-    found: list[str] = []
-    text = html.unescape(page)
-    for match in re.findall(r"""<(?:track|a)\b[^>]*\b(?:src|href)=["']([^"']+)["']""", text, re.I):
-        absolute = fetch_audio.absolute_ref(page_url, html.unescape(match).strip())
-        if absolute and is_transcript_url(absolute):
-            found.append(absolute)
-    for match in URL_RE.findall(text):
-        url = unescape_url(match)
-        absolute = fetch_audio.absolute_ref(page_url, url)
-        if absolute and is_transcript_url(absolute) and absolute not in found:
-            found.append(absolute)
-    return found
-
-
-def parse_items(root: ElementTree.Element, base: str) -> list[dict]:
-    items: list[dict] = []
-    for element in root.iter():
-        if fetch_audio.local_name(element.tag) not in {"item", "entry"}:
-            continue
-        title = fetch_audio.child_text(element, "title")
-        link = fetch_audio.child_text(element, "link")
-        guid = fetch_audio.child_text(element, "guid") or fetch_audio.child_text(element, "id")
-        published_raw = None
-        for date_name in ("pubDate", "published", "updated", "date"):
-            published_raw = fetch_audio.child_text(element, date_name)
-            if published_raw:
-                break
-        enclosure = None
-        for child in list(element):
-            name = fetch_audio.local_name(child.tag)
-            type_ = (child.get("type") or "").lower()
-            if name == "enclosure" and child.get("url"):
-                enclosure = child.get("url")
-            if name == "link":
-                href = child.get("href")
-                rel = (child.get("rel") or "").lower()
-                if href and (rel == "enclosure" or type_.startswith("audio/")):
-                    enclosure = href
-                elif href and rel in {"", "alternate"} and not link:
-                    link = href
-        transcripts = item_transcript_urls(element)
-        if not any((title, guid, enclosure, transcripts)):
-            continue
-        items.append(
-            {
-                "title": title,
-                "link": fetch_audio.absolute_ref(base, link),
-                "guid": guid,
-                "enclosure": fetch_audio.absolute_ref(base, enclosure),
-                "published": fetch_audio.parse_published(published_raw),
-                "transcripts": [
-                    (fetch_audio.absolute_ref(base, url) or url, source) for url, source in transcripts
-                ],
-            }
-        )
-    return items
+def transcript_body(payload: dict) -> str:
+    segments = payload.get("segments")
+    if isinstance(segments, list):
+        text = segments_to_text(segments)
+        if text.strip():
+            return text
+    raw = payload.get("text")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip() + "\n"
+    return ""
 
 
 def file_for(item: dict, output_dir: Path) -> Path:
@@ -262,139 +96,6 @@ def file_for(item: dict, output_dir: Path) -> Path:
     digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir / f"{digest}.txt"
-
-
-def save_transcript(item: dict, url: str, source: str, output_dir: Path, allow_private: bool) -> dict:
-    body, mime = read_text_url(url, allow_private)
-    text = to_text(body, mime, url)
-    if not text.strip():
-        raise ValueError("prázdný přepis")
-    path = file_for(item, output_dir)
-    path.write_text(text, encoding="utf-8")
-    published = item.get("published")
-    return {
-        "title": item.get("title"),
-        "guid": item.get("guid"),
-        "media_url": item.get("enclosure"),
-        "published": published.isoformat() if published else None,
-        "transcript_url": url,
-        "source": source,
-        "path": str(path),
-        "status": "saved",
-    }
-
-
-def podscan_episode_id(
-    rss: str,
-    guid: str | None,
-    enclosure: str | None,
-    api_key: str,
-    base: str,
-    allow_private: bool,
-) -> str | None:
-    if guid:
-        query = urllib.parse.urlencode({"rss_feed": rss, "guid": guid, "exclude_transcript": "true"})
-        url = f"{base.rstrip('/')}/episodes/search/by/feed-and-guid?{query}"
-        payload = get_json(url, api_key, allow_private)
-        episodes = payload.get("episodes") if isinstance(payload, dict) else None
-        if isinstance(episodes, list) and episodes:
-            episode_id = episodes[0].get("episode_id")
-            if episode_id:
-                return str(episode_id)
-    if enclosure:
-        query = urllib.parse.urlencode({"enclosure_url": enclosure})
-        url = f"{base.rstrip('/')}/episodes/search/by/enclosure-url?{query}"
-        payload = get_json(url, api_key, allow_private)
-        episodes = payload.get("episodes") if isinstance(payload, dict) else None
-        if isinstance(episodes, list) and episodes:
-            episode_id = episodes[0].get("episode_id")
-            if episode_id:
-                return str(episode_id)
-    return None
-
-
-def open_podscan(request: urllib.request.Request, allow_private: bool) -> bytes:
-    opener = urllib.request.build_opener(fetch_audio.SafeRedirectHandler(allow_private))
-    delay = 2
-    last_code = 0
-    for _attempt in range(4):
-        try:
-            with opener.open(request, timeout=60) as response:
-                return fetch_audio.read_capped(response, TEXT_LIMIT)
-        except urllib.error.HTTPError as exc:
-            last_code = exc.code
-            if exc.code == 401:
-                fail(3, "Podscan klíč odmítl. Přepis jsem nestáhl.")
-            if exc.code == 404:
-                return b""
-            if exc.code == 429 and _attempt < 3:
-                try:
-                    exc.read()
-                except OSError:
-                    pass
-                retry_after = exc.headers.get("Retry-After") if exc.headers else None
-                time.sleep(int(retry_after) if retry_after and retry_after.isdigit() else delay)
-                delay *= 2
-                continue
-            fail(3, f"Podscan vrátil chybu {exc.code}. Přepis jsem nestáhl.")
-        except urllib.error.URLError as exc:
-            fail(3, f"Podscan se nepodařilo otevřít: {exc.reason}. Přepis jsem nestáhl.")
-    fail(3, f"Podscan vrátil chybu {last_code}. Přepis jsem nestáhl.")
-    return b""
-
-
-def get_json(url: str, api_key: str, allow_private: bool) -> dict:
-    fetch_audio.check_url(url, allow_private)
-    request = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": fetch_audio.USER_AGENT,
-            "Accept": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
-        method="GET",
-    )
-    body = open_podscan(request, allow_private)
-    if not body:
-        return {}
-    try:
-        payload = json.loads(body.decode("utf-8", errors="replace"))
-    except json.JSONDecodeError:
-        fail(3, "Podscan nevrátil JSON. Přepis jsem nestáhl.")
-    if not isinstance(payload, dict):
-        fail(3, "Podscan nevrátil JSON. Přepis jsem nestáhl.")
-    return payload
-
-
-def podscan_vtt(episode_id: str, api_key: str, base: str, allow_private: bool) -> bytes:
-    url = f"{base.rstrip('/')}/episodes/{urllib.parse.quote(episode_id)}/transcript/download?format=vtt"
-    fetch_audio.check_url(url, allow_private)
-    request = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": fetch_audio.USER_AGENT,
-            "Accept": "text/vtt, text/plain",
-            "Authorization": f"Bearer {api_key}",
-        },
-        method="GET",
-    )
-    body = open_podscan(request, allow_private)
-    return body
-
-
-def missing(item: dict, reason: str) -> dict:
-    published = item.get("published")
-    return {
-        "title": item.get("title"),
-        "guid": item.get("guid"),
-        "media_url": item.get("enclosure"),
-        "published": published.isoformat() if published else None,
-        "transcript_url": None,
-        "source": None,
-        "path": None,
-        "status": "missing",
-        "reason": reason,
-    }
 
 
 def load_processed(path: Path) -> set[str]:
@@ -405,134 +106,369 @@ def load_processed(path: Path) -> set[str]:
         clean = line.strip()
         if not clean or clean.startswith("#"):
             continue
-        found.add(clean)
+        found.add(html.unescape(clean))
     return found
 
 
-def fetch_recent_transcripts(
-    url: str,
-    output_dir: Path,
-    days: int,
-    allow_private: bool = False,
-    now: datetime | None = None,
-    api_key: str | None = None,
-    podscan_base: str = PODSCAN_BASE,
-    processed_urls: set[str] | None = None,
-    ready_only: bool = False,
-) -> list[dict]:
-    if days < 1:
-        fail(2, "Počet dní musí být aspoň 1.")
+def load_jobs(path: Path | None) -> dict[str, str]:
+    if path is None or not path.is_file():
+        return {}
+    found: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        clean = line.strip()
+        if not clean or clean.startswith("#"):
+            continue
+        job_id, sep, media = clean.partition(" ")
+        media = html.unescape(media.strip())
+        if sep and JOB_ID_RE.fullmatch(job_id) and media:
+            found[media] = job_id
+    return found
+
+
+def save_jobs(path: Path | None, jobs: dict[str, str]) -> None:
+    if path is None:
+        return
+    lines = ["# Rozdělané přepisy PodscriptAPI. job_id a media_url. Tento soubor necommituj."]
+    for media, job_id in jobs.items():
+        if JOB_ID_RE.fullmatch(job_id):
+            lines.append(f"{job_id} {media}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def episode_result(item: dict, **extra: object) -> dict:
+    published = item.get("published")
+    result = {
+        "title": item.get("title"),
+        "guid": item.get("guid"),
+        "media_url": item.get("enclosure"),
+        "published": published.isoformat() if isinstance(published, datetime) else None,
+        "source": "podscript",
+        "podscript_source": None,
+        "language": None,
+        "job_id": None,
+        "path": None,
+        "status": "missing",
+        "reason": None,
+    }
+    result.update(extra)
+    return result
+
+
+def newest_item(items: list[dict]) -> dict:
+    dated = [item for item in items if item.get("published")]
+    if dated:
+        return max(dated, key=lambda item: item["published"])
+    return items[0]
+
+
+def parse_feed(url: str, allow_private: bool) -> tuple[str, list[dict]]:
     loaded = fetch_audio.load_feed(url, allow_private)
     if loaded is None:
-        fail(2, "Odkaz není RSS feed. Textový přepis z něj neberu a audio nestahuji.")
+        fail(2, "Odkaz není RSS feed. Přepis přes PodscriptAPI z něj neberu a audio nestahuji.")
     final, _mime, body = loaded
     try:
         root = ElementTree.fromstring(body)
     except ElementTree.ParseError:
-        fail(2, "Feed nejde přečíst. Textový přepis jsem nestáhl.")
-    items = parse_items(root, final)
+        fail(2, "Feed nejde přečíst. Přepis jsem nestáhl.")
+    items: list[dict] = []
+    for item in fetch_audio.feed_items(root):
+        item["link"] = fetch_audio.absolute_ref(final, item.get("link"))
+        item["enclosure"] = fetch_audio.absolute_ref(final, item.get("enclosure"))
+        if item.get("guid"):
+            item["guid"] = html.unescape(str(item["guid"])).strip()
+        if item.get("enclosure"):
+            item["enclosure"] = html.unescape(str(item["enclosure"])).strip()
+        items.append(item)
     if not items:
-        fail(2, "Feed neobsahuje díl. Textový přepis jsem nestáhl.")
-    moment = now or datetime.now(timezone.utc)
-    chosen, _selection = fetch_audio.recent_feed_items(items, days, moment)
-    if ready_only:
-        chosen = sorted(
-            chosen,
-            key=lambda item: item.get("published") or datetime.min.replace(tzinfo=timezone.utc),
-            reverse=True,
+        fail(2, "Feed neobsahuje díl. Přepis jsem nestáhl.")
+    return final, items
+
+
+def reason_for_status(status: int) -> str:
+    if status == 401:
+        return "PodscriptAPI klíč odmítl. Přepis jsem nestáhl."
+    if status == 402:
+        return "Na PodscriptAPI není dost kreditů. Přepis jsem nestáhl."
+    if status == 404:
+        return "PodscriptAPI díl nenašlo. Přepis jsem nestáhl."
+    if status == 422:
+        return "Díl nemá veřejné audio nebo je delší než osm hodin. Přepis jsem nestáhl."
+    if status == 429:
+        return "PodscriptAPI omezilo počet dotazů. Přepis jsem znovu nespouštěl."
+    if status == 503:
+        return "PodscriptAPI je dočasně nedostupné. Přepis jsem nestáhl."
+    if status == 0:
+        return "PodscriptAPI se nepodařilo otevřít. Přepis jsem nestáhl."
+    return f"PodscriptAPI vrátilo chybu {status}. Přepis jsem nestáhl."
+
+
+def decode_json(body: bytes) -> dict | None:
+    if not body:
+        return None
+    try:
+        payload = json.loads(body.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+def request_json(
+    method: str,
+    url: str,
+    api_key: str,
+    allow_private: bool,
+    payload: dict | None,
+    sleep,
+) -> tuple[int, dict | None]:
+    fetch_audio.check_url(url, allow_private)
+    data = None
+    headers = {
+        "User-Agent": fetch_audio.USER_AGENT,
+        "Accept": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    opener = urllib.request.build_opener(fetch_audio.SafeRedirectHandler(allow_private))
+    for attempt in range(2):
+        request = urllib.request.Request(url, data=data, headers=headers, method=method)
+        try:
+            with opener.open(request, timeout=60) as response:
+                status = getattr(response, "status", response.code)
+                body = fetch_audio.read_capped(response, TEXT_LIMIT)
+            return status, decode_json(body)
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+            try:
+                exc.read(TEXT_LIMIT)
+            except OSError:
+                pass
+            retry_after = exc.headers.get("Retry-After") if exc.headers else None
+            short_wait = retry_after.isdigit() and int(retry_after) <= 5 if retry_after else False
+            if status in {429, 503} and attempt == 0 and short_wait:
+                sleep(int(retry_after) if retry_after and retry_after.isdigit() else 2)
+                continue
+            return status, None
+        except urllib.error.URLError:
+            return 0, None
+    return 0, None
+
+
+def start_payload(feed_url: str, item: dict) -> dict:
+    payload: dict = {"url": feed_url}
+    if item.get("guid"):
+        payload["episode"] = {"guid": item["guid"]}
+    elif item.get("title"):
+        payload["episode"] = {"title": item["title"]}
+    return payload
+
+
+def await_transcript(
+    base: str,
+    api_key: str,
+    allow_private: bool,
+    initial: dict,
+    sleep,
+    monotonic,
+    max_wait: float,
+) -> tuple[dict | None, str | None]:
+    payload = initial
+    started = monotonic()
+    while payload.get("status") == "processing":
+        job_id = str(payload.get("id") or "")
+        if not JOB_ID_RE.fullmatch(job_id):
+            return None, "PodscriptAPI nevrátilo použitelné job_id. Druhý přepis jsem nespustil."
+        if monotonic() - started >= max_wait:
+            return payload, None
+        sleep(POLL_INTERVAL_SEC)
+        status, refreshed = request_json(
+            "GET",
+            f"{base.rstrip('/')}/v1/transcripts/{urllib.parse.quote(job_id)}?format=json",
+            api_key,
+            allow_private,
+            None,
+            sleep,
         )
+        if refreshed is None:
+            if status == 200:
+                return None, "PodscriptAPI nevrátilo JSON. Přepis jsem nestáhl."
+            return None, reason_for_status(status)
+        payload = refreshed
+    return payload, None
+
+
+def save_completed(item: dict, payload: dict, output_dir: Path) -> dict:
+    text = transcript_body(payload)
+    job_id = str(payload.get("id") or "") or None
+    if not text.strip():
+        return episode_result(
+            item,
+            job_id=job_id,
+            podscript_source=payload.get("source"),
+            language=payload.get("language"),
+            status="missing",
+            reason="Přepis z PodscriptAPI je prázdný. Shrnutí z něj nedělej.",
+        )
+    path = file_for(item, output_dir)
+    path.write_text(text, encoding="utf-8")
+    return episode_result(
+        item,
+        podscript_source=payload.get("source"),
+        language=payload.get("language"),
+        job_id=job_id,
+        path=str(path),
+        status="saved",
+        reason=None,
+    )
+
+
+def fetch_show_transcript(
+    url: str,
+    output_dir: Path,
+    allow_private: bool = False,
+    api_key: str | None = None,
+    podscript_base: str = PODSCRIPT_BASE,
+    processed_urls: set[str] | None = None,
+    jobs_file: Path | None = None,
+    sleep=time.sleep,
+    monotonic=time.monotonic,
+    max_wait: float = POLL_MAX_SEC,
+) -> dict:
+    key = api_key if api_key is not None else os.environ.get("PODSCRIPT_API_KEY") or ""
+    if not key:
+        fail(3, "PODSCRIPT_API_KEY chybí. Přepis jsem nestáhl a audio jsem nestahoval.")
+    final, items = parse_feed(url, allow_private)
+    item = newest_item(items)
+    enclosure = item.get("enclosure") or ""
     done = processed_urls or set()
-    key = api_key if api_key is not None else os.environ.get("PODSCAN_API_KEY") or ""
-    results: list[dict] = []
-    for item in chosen:
-        if ready_only and item.get("enclosure") in done:
-            continue
-        saved = None
-        for transcript_url, source in item.get("transcripts") or []:
-            if not transcript_url or is_audio_url(transcript_url):
-                continue
-            try:
-                saved = save_transcript(item, transcript_url, source, output_dir, allow_private)
-                break
-            except (SystemExit, ValueError, urllib.error.URLError, OSError):
-                saved = None
-        link = item.get("link")
-        if saved is None and link and not is_audio_url(link) and link != item.get("enclosure"):
-            try:
-                page_body, _mime = read_text_url(link, allow_private)
-                page = page_body.decode("utf-8", errors="replace")
-            except (SystemExit, urllib.error.URLError, OSError):
-                page = ""
-            for transcript_url in page_transcript_urls(link, page):
-                try:
-                    saved = save_transcript(item, transcript_url, "stranka", output_dir, allow_private)
-                    break
-                except (SystemExit, ValueError, urllib.error.URLError, OSError):
-                    saved = None
-        if saved is None and key:
-            try:
-                episode_id = podscan_episode_id(
-                    final,
-                    item.get("guid"),
-                    item.get("enclosure"),
-                    key,
-                    podscan_base,
-                    allow_private,
+    if enclosure and enclosure in done:
+        return episode_result(
+            item,
+            status="processed",
+            reason="Nejnovější díl už je ve zpracovane.txt. Přepis jsem znovu nestahoval.",
+        )
+
+    jobs = load_jobs(jobs_file)
+    existing = jobs.get(enclosure) if enclosure else None
+    base = podscript_base.rstrip("/")
+    if existing:
+        status, payload = request_json(
+            "GET",
+            f"{base}/v1/transcripts/{urllib.parse.quote(existing)}?format=json",
+            key,
+            allow_private,
+            None,
+            sleep,
+        )
+        if status == 404 or payload is None and status == 404:
+            jobs.pop(enclosure, None)
+            save_jobs(jobs_file, jobs)
+            existing = None
+            payload = None
+        elif status != 200 or payload is None:
+            return episode_result(item, job_id=existing, status="missing", reason=reason_for_status(status))
+        elif payload.get("status") == "failed":
+            jobs.pop(enclosure, None)
+            save_jobs(jobs_file, jobs)
+            return episode_result(
+                item,
+                job_id=existing,
+                status="missing",
+                reason="Přepis na PodscriptAPI selhal. Shrnutí z něj nedělej a díl nezapisuj.",
+            )
+        else:
+            payload, error = await_transcript(base, key, allow_private, payload, sleep, monotonic, max_wait)
+            if error or payload is None:
+                return episode_result(item, job_id=existing, status="missing", reason=error)
+            if payload.get("status") == "processing":
+                return episode_result(
+                    item,
+                    job_id=str(payload.get("id") or existing),
+                    status="processing",
+                    reason="Přepis na PodscriptAPI ještě běží. Shrnutí z něj nedělej a díl nezapisuj.",
                 )
-                if episode_id:
-                    vtt = podscan_vtt(episode_id, key, podscan_base, allow_private)
-                    text = to_text(vtt, "text/vtt", "transcript.vtt")
-                    if text.strip():
-                        path = file_for(item, output_dir)
-                        path.write_text(text, encoding="utf-8")
-                        published = item.get("published")
-                        saved = {
-                            "title": item.get("title"),
-                            "guid": item.get("guid"),
-                            "media_url": item.get("enclosure"),
-                            "published": published.isoformat() if published else None,
-                            "transcript_url": f"{podscan_base.rstrip('/')}/episodes/{episode_id}/transcript/download?format=vtt",
-                            "source": "podscan",
-                            "path": str(path),
-                            "status": "saved",
-                        }
-            except SystemExit:
-                raise
-            except (urllib.error.URLError, OSError, ValueError):
-                saved = None
-        if saved is None:
-            if ready_only:
-                continue
-            if key:
-                reason = "Celý textový přepis se nepodařilo získat. Audio jsem nestahoval."
-            else:
-                reason = "U dílu není veřejný textový přepis a PODSCAN_API_KEY chybí. Audio jsem nestahoval."
-            saved = missing(item, reason)
-        results.append(saved)
-        if ready_only:
-            break
-    return results
+            if payload.get("status") == "failed":
+                jobs.pop(enclosure, None)
+                save_jobs(jobs_file, jobs)
+                return episode_result(
+                    item,
+                    job_id=existing,
+                    status="missing",
+                    reason="Přepis na PodscriptAPI selhal. Shrnutí z něj nedělej a díl nezapisuj.",
+                )
+            saved = save_completed(item, payload, output_dir)
+            if saved["status"] == "saved":
+                jobs.pop(enclosure, None)
+                save_jobs(jobs_file, jobs)
+            return saved
+
+    status, payload = request_json(
+        "POST",
+        f"{base}/v1/transcripts",
+        key,
+        allow_private,
+        start_payload(final, item),
+        sleep,
+    )
+    if status not in {200, 202} or payload is None:
+        if payload is None and status in {200, 202}:
+            reason = "PodscriptAPI nevrátilo JSON. Přepis jsem nestáhl."
+        else:
+            reason = reason_for_status(status)
+        return episode_result(item, status="missing", reason=reason)
+    if payload.get("status") == "failed":
+        return episode_result(
+            item,
+            job_id=str(payload.get("id") or "") or None,
+            status="missing",
+            reason="Přepis na PodscriptAPI selhal. Shrnutí z něj nedělej a díl nezapisuj.",
+        )
+    job_id = str(payload.get("id") or "")
+    if payload.get("status") == "processing" and enclosure and JOB_ID_RE.fullmatch(job_id):
+        jobs[enclosure] = job_id
+        save_jobs(jobs_file, jobs)
+    payload, error = await_transcript(base, key, allow_private, payload, sleep, monotonic, max_wait)
+    if error or payload is None:
+        return episode_result(item, job_id=job_id or None, status="missing", reason=error)
+    if payload.get("status") == "processing":
+        return episode_result(
+            item,
+            job_id=str(payload.get("id") or job_id or "") or None,
+            status="processing",
+            reason="Přepis na PodscriptAPI ještě běží. Shrnutí z něj nedělej a díl nezapisuj.",
+        )
+    if payload.get("status") != "completed":
+        return episode_result(
+            item,
+            job_id=str(payload.get("id") or "") or None,
+            status="missing",
+            reason="PodscriptAPI přepis nedokončilo. Shrnutí z něj nedělej a díl nezapisuj.",
+        )
+    saved = save_completed(item, payload, output_dir)
+    if saved["status"] == "saved" and enclosure:
+        jobs.pop(enclosure, None)
+        save_jobs(jobs_file, jobs)
+    return saved
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Stáhne textový přepis dílů z feedu. Audio nestahuje.")
+    parser = argparse.ArgumentParser(description="Stáhne přepis nejnovějšího dílu přes PodscriptAPI. Audio nestahuje.")
     parser.add_argument("url")
     parser.add_argument("--output-dir", default="output/transcripts")
-    parser.add_argument("--recent-days", type=int, default=7)
     parser.add_argument("--processed-file", default="")
-    parser.add_argument(
-        "--ready-only",
-        action="store_true",
-        help="Vezmi jen nejnovější díl, který ještě není zpracovaný a má celý text.",
-    )
+    parser.add_argument("--jobs-file", default="")
     args = parser.parse_args()
     processed = load_processed(Path(args.processed_file)) if args.processed_file else set()
-    result = fetch_recent_transcripts(
+    jobs_file = Path(args.jobs_file) if args.jobs_file else None
+    result = fetch_show_transcript(
         args.url,
         Path(args.output_dir),
-        args.recent_days,
         processed_urls=processed,
-        ready_only=args.ready_only,
+        jobs_file=jobs_file,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
