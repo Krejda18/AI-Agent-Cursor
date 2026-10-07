@@ -33,3 +33,13 @@ https://feeds.acast.com/public/shows/fotbollsmorgon
 # Norsko a Švédsko
 # Nordic Football Podcast (mezera asi 21 dní, poslední díl 17. 9.)
 https://nordicfootballpod.libsyn.com/rss
+
+# Španělsko – Segunda
+# Play Segunda (poslední díl 1. 10.)
+https://fapi-top.prisasd.com/podcast/playser/play_segunda/itunestfp/podcast.xml
+# Camino al Cielo (poslední položka feedu 4. 10., úsek MARCADOR)
+https://www.omnycontent.com/d/playlist/4ac2c3a8-bb0c-499b-bf22-ac8400df1983/7068925f-6ad1-4273-a36e-ac9401616704/21d1db4a-74e0-4c9b-a16c-ac9401616714/podcast.rss
+# Juego de Plata (poslední díl 23. 9. 2025)
+https://www.ondacero.es/rss/podcast/789853/podcast.xml
+# The Spanish Segunda Show (poslední díl 5. 10.)
+https://feeds.megaphone.fm/COMG8660158635

@@ -5,7 +5,7 @@ description: >-
   pořadu vezme nejnovější díl, který ještě není zpracovaný a už má celý text,
   a jazykovým modelem z něj česky vytáhne
   finance klubů, hráče ve formě i mimo ni, mladé hráče a nabídky. Nakonec
-  udělá souhrn za Finsko, Norsko a Švédsko. Audio nestahuje. Použij, když
+  udělá souhrn za Finsko, Norsko, Švédsko a Španělsko. Audio nestahuje. Použij, když
   uživatel požádá o týdenní průchod, sledované podcasty nebo souhrn zemí.
   Jeden soubor nebo jeden odkaz na díl patří skillu prepis-audio.
 ---
@@ -90,7 +90,7 @@ Pak projdi text po blocích. Z každého bloku ber jen kartičku, u které zůst
 - česky jedna věta
 - druh: aktuální, vzpomínka, názor panelu, nejisté
 
-Kartičku zahoď, když v citaci chybí jméno, klub nebo částka, když je to reklama nebo sázka, když jde o cizí ligu bez vazby na severský klub, nebo když je jméno zkomolené a v textu se podruhé neopakuje. Nejisté jméno nech `[nejisté]` a neopravuj ho podle toho, koho znáš.
+Kartičku zahoď, když v citaci chybí jméno, klub nebo částka, když je to reklama nebo sázka, nebo když je jméno zkomolené a v textu se podruhé neopakuje. U severského pořadu zahoď i cizí ligu bez vazby na severský klub. U pořadu ze skupiny Španělsko nech španělskou ligu a španělský klub. Nejisté jméno nech `[nejisté]` a neopravuj ho podle toho, koho znáš.
 
 Do českého přehledu dej kartičky druhu aktuální a názor panelu. Vzpomínku dej stranou jako starou kariéru. Když díl nemá ani jednu kartičku, napiš „Z tohoto dílu nešel použít výtah.“ Šest prázdných nadpisů nevyplňuj.
 
@@ -107,7 +107,7 @@ Přestup sám nepřeřazuj do finanční situace klubu. Do financí patří jen 
 
 ## Souhrn za zemi
 
-Po výtahu dílů přidej celkový souhrn za Finsko, Norsko a Švédsko. Do souhrnu země patří kartičky z vybraných textů. Skupiny jsou v `sledovane.txt`.
+Po výtahu dílů přidej celkový souhrn za Finsko, Norsko, Švédsko a Španělsko. Do souhrnu země patří kartičky z vybraných textů. Skupiny jsou v `sledovane.txt`.
 
 Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se mluví. Věta o obou zemích patří do obou souhrnů. Stejný klub nebo hráč ať je v jedné skupině jen jednou. Když se pořady liší, nech oba výroky a uveď pořad i díl. Nic nového oproti dílům nepřidávej. Když země nemá vybraný díl, napiš to a skupiny nevyplňuj ze starších zpracovaných dílů.
 
@@ -115,7 +115,7 @@ Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se
 
 - Který díl se vzal: ještě nebyl zpracovaný a má celý text. Když v okně 31 dní takový díl není, napiš to. Novější díl bez textu jen zmiň, že na něj text ještě není.
 - Skupiny, které kartičky pokryjí.
-- Celkový souhrn za Finsko, za Norsko a za Švédsko.
+- Celkový souhrn za Finsko, za Norsko, za Švédsko a za Španělsko.
 - Nejasnosti.
 - Úplný přepis jen na vyžádání.
 
