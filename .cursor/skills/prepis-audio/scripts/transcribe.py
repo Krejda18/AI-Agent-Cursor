@@ -277,9 +277,9 @@ def load_local_model(model_name: str):
     except ImportError:
         fail(
             4,
-            "Chybí balíček faster-whisper. Nainstaluj ho do .venv příkazem "
-            "pip install -r .cursor/skills/prepis-audia/requirements.txt "
-            "a spusť přepis znovu. Nahrávka se nikam neodesílala.",
+            "Chybí balíček faster-whisper. Nainstaluj ho do .venv skillu příkazem "
+            "pip install -r requirements.txt "
+            "ze složky skillu a spusť přepis znovu. Nahrávka se nikam neodesílala.",
         )
     try:
         return WhisperModel(model_name, device="cpu", compute_type="int8"), model_name
@@ -468,7 +468,7 @@ def main(argv: list[str] | None = None) -> int:
     detected_language = language or ""
     language_probability = 0.0
 
-    with tempfile.TemporaryDirectory(prefix="prepis-audia-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="prepis-audio-") as tmp:
         temp = Path(tmp)
         wav = temp / "source.wav"
         convert_wav(audio, wav)

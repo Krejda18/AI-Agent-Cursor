@@ -1,0 +1,11 @@
+# Už zpracované díly. Jeden media_url na řádek.
+# Řádek přibude až po uložení českého souhrnu, a jen když text dílu leží v texty/.
+# Díl, který přes PodscriptAPI nešel stáhnout, sem nepatří.
+# Seznam z 29. 9.–6. 10. 2026 byl smazaný: šlo o díly bez výtahu, část z nich text ještě neměla.
+# Výtah 7. 10. 2026.
+https://mcdn.podbean.com/mf/web/iu6m6zz5ijxtfwct/FFS_Pod_-_Nationas_League_Veikkausliiga_Splits6qi19.mp3
+https://anchor.fm/s/dae9c5c/podcast/play/125929228/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-8-18%2Fad23d373-2be1-d639-20a1-929c5742f440.mp3
+https://traffic.omny.fm/d/clips/d79bdbb3-8eae-4ad2-b1f6-b0bc00cd1540/5aaf5ff8-77f9-41db-9980-b149016b6669/089c1c9d-589f-4a47-803d-b4c800dec39d/audio.mp3?utm_source=Podcast&in_playlist=2a24e942-9eb8-4327-a412-b149016b6677
+https://sphinx.acast.com/p/open/s/6441651b7301040011957508/e/6ac37e0f0d8a484144cb0410/media.mp3
+https://sphinx.acast.com/p/acast/s/studioallsvenskan/e/6ac3928a32d92567308f4b10/media.mp3
+https://sphinx.acast.com/p/acast/s/lundh/e/6ab08296119942cbe1fd10b2/media.mp3

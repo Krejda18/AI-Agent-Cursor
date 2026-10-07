@@ -1,0 +1,45 @@
+# Sledované podcasty. Jeden odkaz na řádek.
+# Pravidelný pořad má mezery mezi díly do měsíce. Když je poslední díl
+# o měsíc pozadu, pořád se sleduje. Stav k 7. 10. 2026.
+# Řádek s # se přeskakuje.
+# Pořad podle názvu skill nevyhledává. Když uživatel pošle OPML, přepiš seznam z xmlUrl.
+
+# Finsko – Veikkausliiga
+# The Finnish Football Show (mezera asi 21 dní, poslední díl 8. 9.)
+https://feed.podbean.com/FinnishFootballShow/feed.xml
+# Napit Edellä (mezera asi 8 dní, poslední díl 30. 9.)
+https://anchor.fm/s/dae9c5c/podcast/rss
+# Nappulakengät (mezera asi 14 dní, poslední díl 11. 9.)
+https://anchor.fm/s/10d65e4c/podcast/rss
+# Seinäjoki Football Supporters Podcast (mezera asi 9 dní, poslední díl 3. 9.)
+https://feed.podbean.com/seinajokifootballpod/feed.xml
+
+# Norsko – Eliteserien
+# Rabona (mezera asi 3 dny, poslední díl 6. 10.)
+https://feed.pod.space/rabona
+# TV 2 – Spiss Vinkel (mezera asi 3 dny, poslední díl 28. 9.)
+https://omny.fm/shows/tv-2-spiss-vinkel/playlists/podcast.rss
+
+# Švédsko – Allsvenskan
+# 90MinSvenskan (mezera asi 2 dny, poslední díl 6. 10.)
+https://feeds.acast.com/public/shows/6441651b7301040011957508
+# Studio Allsvenskan (skoro každý den, poslední díl 6. 10.)
+https://feeds.acast.com/public/shows/studioallsvenskan
+# Lundh (mezera asi 4 dny, poslední díl 21. 9.)
+https://feeds.acast.com/public/shows/lundh
+# Fotbollsmorgon (skoro každý den, poslední díl 6. 10.)
+https://feeds.acast.com/public/shows/fotbollsmorgon
+
+# Norsko a Švédsko
+# Nordic Football Podcast (mezera asi 21 dní, poslední díl 17. 9.)
+https://nordicfootballpod.libsyn.com/rss
+
+# Španělsko – Segunda
+# Play Segunda (poslední díl 1. 10.)
+https://fapi-top.prisasd.com/podcast/playser/play_segunda/itunestfp/podcast.xml
+# Camino al Cielo (poslední položka feedu 4. 10., úsek MARCADOR)
+https://www.omnycontent.com/d/playlist/4ac2c3a8-bb0c-499b-bf22-ac8400df1983/7068925f-6ad1-4273-a36e-ac9401616704/21d1db4a-74e0-4c9b-a16c-ac9401616714/podcast.rss
+# Juego de Plata (poslední díl 23. 9. 2025)
+https://www.ondacero.es/rss/podcast/789853/podcast.xml
+# The Spanish Segunda Show (poslední díl 5. 10.)
+https://feeds.megaphone.fm/COMG8660158635

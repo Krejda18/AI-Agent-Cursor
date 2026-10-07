@@ -1,4 +1,5 @@
 .venv/
+.cursor/skills/tydenni-fotbalove-podcasty/probihajici.txt
 output/
 *.mp3
 *.wav
@@ -8,6 +9,8 @@ output/
 *.webm
 *.opus
 *.aac
+*.m4b
+*.mp4
 __pycache__/
 .pytest_cache/
 *.pyc
