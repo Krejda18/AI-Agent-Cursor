@@ -3,9 +3,9 @@ name: tydenni-fotbalove-podcasty
 description: >-
   Jednou týdně projde sledované fotbalové podcasty z sledovane.txt, najde
   celý textový přepis nových dílů a jazykovým modelem z něj česky vytáhne
-  finance klubů, hráče ve formě i mimo ni, mladé hráče a nabídky. Nakonec
-  udělá souhrn za Finsko, Norsko a Švédsko. Audio nestahuje. Použij, když
-  uživatel požádá o týdenní průchod, sledované podcasty nebo souhrn zemí.
+  finance klubů, hráče a názory na jejich výkon, mladé hráče a nabídky.
+  Nakonec udělá souhrn za Finsko, Norsko a Švédsko. Audio nestahuje. Použij,
+  když uživatel požádá o týdenní průchod, sledované podcasty nebo souhrn zemí.
   Jeden soubor nebo jeden odkaz na díl patří skillu prepis-audio.
 ---
 
@@ -76,29 +76,35 @@ Přepis zůstává v původním jazyce. Jméno, klub, částku a důvod nech jen
 
 Souhrn dělá jazykový model z celého textu. Model na rozpoznání řeči se na souhrn nepoužívá.
 
-Nejdřív díl zařaď jednou větou: aktuální kolo, rozhovor o kariéře, reprezentace, nebo jiný pořad. Rozhovor o minulosti není zpráva o tomto týdnu.
+Nejdřív díl zařaď jednou větou: aktuální kolo, rozhovor o kariéře, reprezentace, nebo jiný pořad. Rozhovor o minulosti není zpráva o tomto týdnu. Když v něm panel hodnotí, jak hráč hraje teď, ta věta do výtahu patří.
 
-Pak projdi text po blocích. Z každého bloku ber jen kartičku, u které zůstane citace:
+Hráči a názory na jejich výkon jsou hlavní část přehledu. Projdi celý text a ber každého hráče, kterého panel hodnotí. Recenze kola, sestavy nebo zápasu má často řadu jmen za sebou. Každý z nich s názorem na výkon dostane vlastní kartičku. Nezastavuj se u nejznámějšího jména v bloku a nezastavuj se po dvou nebo třech hráčích na díl.
+
+Kartička:
 
 - čas `mm:ss`
 - skupina: finance-dobré, finance-špatné, forma-dobrá, forma-špatná, mladý, nabídka
-- klub nebo hráč tak, jak je v citaci
-- citace v původním jazyce, jedna až dvě věty
-- česky jedna věta
+- hráč nebo klub tak, jak je v citaci
+- citace v původním jazyce, jedna až dvě věty, ve kterých je jméno a názor
+- česky jedna až dvě věty: co si o jeho výkonu myslí
 - druh: aktuální, vzpomínka, názor panelu, nejisté
 
-Kartičku zahoď, když v citaci chybí jméno, klub nebo částka, když je to reklama nebo sázka, když jde o cizí ligu bez vazby na severský klub, nebo když je jméno zkomolené a v textu se podruhé neopakuje. Nejisté jméno nech `[nejisté]` a neopravuj ho podle toho, koho znáš.
+Názor na výkon stačí v jedné větě. Patří sem, že hraje dobře nebo špatně, že je ostřejší, neviditelný, rozhodující nebo chybující, že má nastupovat, že ztratil místo, že potřebuje minuty, že je lepší nebo horší než spoluhráč, nebo že kvůli formě patří do reprezentace. Když se hosté neshodnou, nech oba názory jako dvě kartičky.
 
-Do českého přehledu dej kartičky druhu aktuální a názor panelu. Vzpomínku dej stranou jako starou kariéru. Když díl nemá ani jednu kartičku, napiš „Z tohoto dílu nešel použít výtah.“ Šest prázdných nadpisů nevyplňuj.
+Jméno hráče musí být v citaci nebo ve stejné replice těsně kolem ní. Klub a částka jsou povinné jen u financí a u nabídky. Kartičku o výkonu nezahazuj proto, že v ní není gól, částka ani věta o penězích klubu.
 
-Skupiny, které kartičky pokryjí, vypiš pod dílem. U položky uveď pořad, název dílu a čas `mm:ss`.
+Kartičku zahoď, když nejde poznat, o kom mluví, když je to reklama nebo sázka, když jde o cizí ligu bez vazby na severský klub, nebo když je jméno zkomolené a v textu se podruhé neopakuje. Samotné jméno bez názoru na výkon, peníze nebo nabídku kartička není. Nejisté jméno nech `[nejisté]` a neopravuj ho podle toho, koho znáš.
+
+Do českého přehledu dej kartičky druhu aktuální a názor panelu. Vzpomínku dej stranou jako starou kariéru, pokud v ní není současný výkon. Když díl nemá ani jednu kartičku, napiš „Z tohoto dílu nešel použít výtah.“ Šest prázdných nadpisů nevyplňuj.
+
+Skupiny, které kartičky pokryjí, vypiš pod dílem. U hráče uveď pořad, název dílu a čas `mm:ss`. Vyjmenuj hráče, které panel hodnotil. Nevybírej vzorek.
 
 - **Kluby, dobrá finanční situace.** Řekli, že klub má peníze, vyrovnaný rozpočet, bohatého vlastníka, splacené dluhy nebo prostor nakupovat.
 - **Kluby, špatná finanční situace.** Řekli, že klub má dluhy, problém s finančním fair play, nucený prodej, srážky mezd, insolvenci nebo že na nákup nemá.
-- **Hráči, kteří hrají dobře.** Jméno a důvod: forma, zápas, góly, přihrávky, nasazení.
-- **Hráči, kteří hrají špatně.** Jméno a důvod: forma, chyba, zranění, mimo sestavu, trest.
-- **Mladí hráči.** Koho označili za mladého, talent, odchovance nebo dorostence a proč o něm mluví.
-- **Nabídky na hráče.** Kdo nabízí, na koho, z jakého klubu a kam. Částku uveď jen když zazněla. Rozliš nabídku, zájem a hotový přestup.
+- **Hráči, kteří hrají dobře.** Jméno, klub pokud zazněl, a názor na výkon: forma, zápas, góly, přihrávky, nasazení, role, srovnání se spoluhráčem nebo proč ho panel chválí.
+- **Hráči, kteří hrají špatně.** Jméno, klub pokud zazněl, a názor na výkon: forma, chyba, ztráta místa, málo minut, zranění nebo trest, pokud kvůli tomu teď nehraje nebo hraje hůř.
+- **Mladí hráči.** Koho označili za mladého, talent, odchovance nebo dorostence, jak si podle panelu teď vede a proč o něm mluví.
+- **Nabídky na hráče.** Kdo nabízí, na koho, z jakého klubu a kam. Částku uveď jen když zazněla. Rozliš nabídku, zájem a hotový přestup. Když k nabídce zazní i názor na výkon, nech ho u stejného hráče.
 
 Přestup sám nepřeřazuj do finanční situace klubu. Do financí patří jen výrok o penězích klubu. Údaje jsou z textu přepisu, ne ověřený stav klubu.
 
@@ -106,12 +112,12 @@ Přestup sám nepřeřazuj do finanční situace klubu. Do financí patří jen 
 
 Po výtahu dílů přidej celkový souhrn za Finsko, Norsko a Švédsko. Do souhrnu země patří kartičky z jejích nových textů tohoto týdne. Skupiny jsou v `sledovane.txt`.
 
-Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se mluví. Věta o obou zemích patří do obou souhrnů. Stejný klub nebo hráč ať je v jedné skupině jen jednou. Když se pořady liší, nech oba výroky a uveď pořad i díl. Nic nového oproti dílům nepřidávej. Když země ten týden nemá nový díl, napiš to a skupiny nevyplňuj z dřívějších týdnů.
+Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se mluví. Věta o obou zemích patří do obou souhrnů. Do souhrnu dej všechny hráče z kartiček tohoto týdne, ne jen nejčastěji skloňované. Stejný hráč může být ve skupině víckrát, když se názory na jeho výkon liší. U každého výroku uveď pořad a díl. Když se pořady shodují, stačí jeden řádek a oba pořady. Nic nového oproti dílům nepřidávej. Když země ten týden nemá nový díl, napiš to a skupiny nevyplňuj z dřívějších týdnů.
 
 ## Výstup
 
 - Které díly jsou nové, které se přeskočily a u kterých textový přepis chybí.
-- Skupiny, které kartičky pokryjí.
+- Skupiny, které kartičky pokryjí. U hráčů vypiš jméno a názor na výkon, ne jen výčet jmen.
 - Celkový souhrn za Finsko, za Norsko a za Švédsko.
 - Nejasnosti.
 - Úplný přepis jen na vyžádání.
