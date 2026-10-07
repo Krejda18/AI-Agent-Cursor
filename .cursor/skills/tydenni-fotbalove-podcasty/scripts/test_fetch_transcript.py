@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import shutil
 import sys
@@ -189,6 +191,7 @@ def test_latest(base: str, tmp: Path) -> None:
 
 
 def test_processed_skips_api(base: str, tmp: Path) -> None:
+    tmp.mkdir(parents=True, exist_ok=True)
     processed = tmp / "zpracovane.txt"
     processed.write_text(f"# hotovo\n{base}/novy.mp3\n", encoding="utf-8")
     row = fetch_transcript.fetch_show_transcript(
@@ -207,6 +210,7 @@ def test_processed_skips_api(base: str, tmp: Path) -> None:
 
 
 def test_resume_job(base: str, tmp: Path) -> None:
+    tmp.mkdir(parents=True, exist_ok=True)
     jobs = tmp / "probihajici.txt"
     jobs.write_text(f"job-12345678 {base}/novy.mp3\n", encoding="utf-8")
     Handler.routes[("GET", "/v1/transcripts/job-12345678")] = (
@@ -303,15 +307,19 @@ def test_unauthorized(base: str, tmp: Path) -> None:
 
 
 def test_missing_key() -> None:
-    try:
-        fetch_transcript.fetch_show_transcript(
-            "https://example.com/feed.xml",
-            Path("/tmp/unused"),
-            api_key="",
-        )
-    except SystemExit as exc:
-        assert exc.code == 3
-        return
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        try:
+            fetch_transcript.fetch_show_transcript(
+                "https://example.com/feed.xml",
+                Path("/tmp/unused"),
+                api_key="",
+            )
+        except SystemExit as exc:
+            assert exc.code == 3
+            assert "PODSCRIPT_API_KEY chybí" in err.getvalue()
+            assert "psk_" not in err.getvalue()
+            return
     raise AssertionError("chybějící klíč měl běh zastavit")
 
 
