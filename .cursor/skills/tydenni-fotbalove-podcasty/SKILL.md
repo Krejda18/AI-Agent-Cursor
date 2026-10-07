@@ -59,6 +59,13 @@ Skript u dílu zkusí v tomto pořadí:
 2. Stejný odkaz na stránce dílu.
 3. Podscan, jen když je v prostředí `PODSCAN_API_KEY`. Díl se páruje podle RSS a `guid`, případně podle adresy audia. Stáhne se WebVTT. Klíč se nikam nezapisuje.
 
+Jiné cesty u těchto pořadů celý text nedaly. Znovu je nezkoušej a kvůli nim nestahuj audio.
+
+- Apple Podcasts má u nejnovějšího dílu všech 11 pořadů prázdné `transcriptInfo`. Soukromý bearer token se nepoužívá.
+- Acast má u dílů pole `transcript`, ale je prázdné.
+- Spotify přepis přes své API nevrací.
+- YouTube má stejný díl u 90MinSvenskan, Studio Allsvenskan a Nordic Football Podcast. Titulky odtud nejdou stáhnout, přehrávač vrací kontrolu proti robotům a prázdný soubor titulků. Rabona, Napit Edellä a deník Fotbollsmorgon stejné video nemají. Video nehledej podle podobného názvu.
+
 `status: saved` je celý text s časy `[mm:ss]`. Prázdné pole znamená, že tento týden nový díl nevyšel. `status: missing` znamená, že text není. Ten díl do výtahu nepatří a do `zpracovane.txt` se nezapisuje, aby to šlo zkusit znovu. Audio se nedotahuje.
 
 Až text existuje, dopiš `media_url` do `zpracovane.txt`. Když stažení textu selže, řádek nepřidávej. Text ani klíč necommituj.
