@@ -1,8 +1,9 @@
 ---
 name: tydenni-fotbalove-podcasty
 description: >-
-  Jednou týdně projde sledované fotbalové podcasty z sledovane.txt, najde
-  celý textový přepis nových dílů a jazykovým modelem z něj česky vytáhne
+  Jednou týdně projde sledované fotbalové podcasty z sledovane.txt. U každého
+  pořadu vezme nejnovější díl, který ještě není zpracovaný a už má celý text,
+  a jazykovým modelem z něj česky vytáhne
   finance klubů, hráče ve formě i mimo ni, mladé hráče a nabídky. Nakonec
   udělá souhrn za Finsko, Norsko a Švédsko. Audio nestahuje. Použij, když
   uživatel požádá o týdenní průchod, sledované podcasty nebo souhrn zemí.
@@ -32,11 +33,11 @@ Odkazy ke stažení jsou v [sledovane.txt](sledovane.txt). Jeden odkaz na řáde
 
 Když uživatel pošle OPML, přepiš `sledovane.txt` adresami z `xmlUrl`. Název pořadu a skupinu nech na řádcích s `#`. Jiné pořady nepřidávej.
 
-Už přepsané díly jsou v [zpracovane.txt](zpracovane.txt), jeden `media_url` na řádek. Ty přeskoč.
+Už zpracované díly jsou v [zpracovane.txt](zpracovane.txt), jeden `media_url` na řádek. Ty přeskoč. Řádek tam patří až po výtahu z celého textu.
 
 ## Text místo audia
 
-Celé audio se nestahuje a faster-whisper se nespouští. U každého dílu z posledních 7 dní se hledá celý přepis v textu.
+Celé audio se nestahuje a faster-whisper se nespouští. U každého pořadu vezmi jeden díl: nejnovější, který ještě není v `zpracovane.txt` a už má celý text. Novější díl bez textu neber a nezapisuj ho, ať ho jde vzít, až přepis bude. Hledej 31 dní dozadu, protože sledovaný pořad může mít poslední díl až měsíc pozadu.
 
 ```bash
 PREPIS_DIR="<kořen skillu prepis-audio>"
@@ -48,7 +49,9 @@ if [ ! -x "$PYTHON" ]; then PYTHON=python3; fi
 "$PYTHON" "$WEEKLY_DIR/scripts/fetch_transcript.py" \
   ODKAZ_ZE_SEZNAMU \
   --output-dir "$WORK_DIR/transcripts" \
-  --recent-days 7
+  --recent-days 31 \
+  --ready-only \
+  --processed-file "$WEEKLY_DIR/zpracovane.txt"
 ```
 
 Skripty jsou ve skillu `prepis-audio` a v `scripts` tohoto skillu. Když v `PREPIS_DIR` není `.venv`, stačí `python3`.
@@ -66,9 +69,9 @@ Jiné cesty u těchto pořadů celý text nedaly. Znovu je nezkoušej a kvůli n
 - Spotify přepis přes své API nevrací.
 - YouTube má stejný díl u 90MinSvenskan, Studio Allsvenskan a Nordic Football Podcast. Titulky odtud nejdou stáhnout, přehrávač vrací kontrolu proti robotům a prázdný soubor titulků. Rabona, Napit Edellä a deník Fotbollsmorgon stejné video nemají. Video nehledej podle podobného názvu.
 
-`status: saved` je celý text s časy `[mm:ss]`. Prázdné pole znamená, že tento týden nový díl nevyšel. `status: missing` znamená, že text není. Ten díl do výtahu nepatří a do `zpracovane.txt` se nezapisuje, aby to šlo zkusit znovu. Audio se nedotahuje.
+`status: saved` je celý text s časy `[mm:ss]` u dílu, který ještě nebyl zpracovaný. Prázdné pole znamená, že v okně 31 dní takový díl není. Díly bez textu skript nevrací a do `zpracovane.txt` se nezapisují. Audio se nedotahuje.
 
-Až text existuje, dopiš `media_url` do `zpracovane.txt`. Když stažení textu selže, řádek nepřidávej. Text ani klíč necommituj.
+Až z textu vznikne výtah, dopiš `media_url` do `zpracovane.txt`. Když text chybí, řádek nepřidávej. Text ani klíč necommituj.
 
 Přepis zůstává v původním jazyce. Jméno, klub, částku a důvod nech jen tehdy, když jsou v textu. Nic nedoplňuj odhadem.
 
@@ -104,13 +107,13 @@ Přestup sám nepřeřazuj do finanční situace klubu. Do financí patří jen 
 
 ## Souhrn za zemi
 
-Po výtahu dílů přidej celkový souhrn za Finsko, Norsko a Švédsko. Do souhrnu země patří kartičky z jejích nových textů tohoto týdne. Skupiny jsou v `sledovane.txt`.
+Po výtahu dílů přidej celkový souhrn za Finsko, Norsko a Švédsko. Do souhrnu země patří kartičky z vybraných textů. Skupiny jsou v `sledovane.txt`.
 
-Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se mluví. Věta o obou zemích patří do obou souhrnů. Stejný klub nebo hráč ať je v jedné skupině jen jednou. Když se pořady liší, nech oba výroky a uveď pořad i díl. Nic nového oproti dílům nepřidávej. Když země ten týden nemá nový díl, napiš to a skupiny nevyplňuj z dřívějších týdnů.
+Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se mluví. Věta o obou zemích patří do obou souhrnů. Stejný klub nebo hráč ať je v jedné skupině jen jednou. Když se pořady liší, nech oba výroky a uveď pořad i díl. Nic nového oproti dílům nepřidávej. Když země nemá vybraný díl, napiš to a skupiny nevyplňuj ze starších zpracovaných dílů.
 
 ## Výstup
 
-- Které díly jsou nové, které se přeskočily a u kterých textový přepis chybí.
+- Který díl se vzal: ještě nebyl zpracovaný a má celý text. Když v okně 31 dní takový díl není, napiš to. Novější díl bez textu jen zmiň, že na něj text ještě není.
 - Skupiny, které kartičky pokryjí.
 - Celkový souhrn za Finsko, za Norsko a za Švédsko.
 - Nejasnosti.
