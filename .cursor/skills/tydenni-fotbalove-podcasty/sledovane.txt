@@ -1,35 +1,35 @@
 # Sledované podcasty. Jeden odkaz na řádek.
-# Hodí se RSS feed pořadu, stránka epizody, odkaz na Overcast nebo přímý audiosoubor.
-# Řádek s # a prázdný řádek se přeskakují.
-# Pořad podle názvu skill nevyhledává. Bez odkazu tady týdenní postup nemá co stáhnout.
-# Když uživatel pošle OPML, přepiš tento seznam z atributů xmlUrl a název nech v komentáři.
+# Aktivní jsou pořady s pravidelnými díly: medián mezery posledních 12 dílů
+# je nejvýš 8 dní a poslední díl není starší než 21 dní (stav 7. 10. 2026).
+# Řádek s # se přeskakuje. Nepravidelné pořady jsou dole v komentáři.
+# Pořad podle názvu skill nevyhledává. Když uživatel pošle OPML, přepiš seznam z xmlUrl.
 
 # Finsko – Veikkausliiga
-# The Finnish Football Show
-https://feed.podbean.com/FinnishFootballShow/feed.xml
-# Napit Edellä
+# Napit Edellä (mezera asi 8 dní, poslední díl 30. 9.)
 https://anchor.fm/s/dae9c5c/podcast/rss
-# Nappulakengät
-https://anchor.fm/s/10d65e4c/podcast/rss
-# Seinäjoki Football Supporters Podcast
-https://feed.podbean.com/seinajokifootballpod/feed.xml
 
 # Norsko – Eliteserien
-# Rabona
+# Rabona (mezera asi 3 dny, poslední díl 6. 10.)
 https://feed.pod.space/rabona
-# TV 2 – Spiss Vinkel
+# TV 2 – Spiss Vinkel (mezera asi 3 dny, poslední díl 28. 9.)
 https://omny.fm/shows/tv-2-spiss-vinkel/playlists/podcast.rss
 
 # Švédsko – Allsvenskan
-# 90MinSvenskan
+# 90MinSvenskan (mezera asi 2 dny, poslední díl 6. 10.)
 https://feeds.acast.com/public/shows/6441651b7301040011957508
-# Studio Allsvenskan
+# Studio Allsvenskan (skoro každý den, poslední díl 6. 10.)
 https://feeds.acast.com/public/shows/studioallsvenskan
-# Lundh
+# Lundh (mezera asi 4 dny, poslední díl 21. 9.)
 https://feeds.acast.com/public/shows/lundh
-# Fotbollsmorgon
+# Fotbollsmorgon (skoro každý den, poslední díl 6. 10.)
 https://feeds.acast.com/public/shows/fotbollsmorgon
 
-# Norsko a Švédsko
-# Nordic Football Podcast
-https://nordicfootballpod.libsyn.com/rss
+# Nepravidelné, týdenní běh je nebere.
+# The Finnish Football Show, mezera asi 21 dní, poslední díl 8. 9.
+# https://feed.podbean.com/FinnishFootballShow/feed.xml
+# Nappulakengät, mezera asi 14 dní, poslední díl 11. 9.
+# https://anchor.fm/s/10d65e4c/podcast/rss
+# Seinäjoki Football Supporters Podcast, málo dílů, poslední 3. 9.
+# https://feed.podbean.com/seinajokifootballpod/feed.xml
+# Nordic Football Podcast, mezera asi 21 dní, poslední díl 17. 9.
+# https://nordicfootballpod.libsyn.com/rss

@@ -28,7 +28,7 @@ Spusť ho, když uživatel chce týdenní průchod sledovaných podcastů. Jeden
 
 ## Seznam
 
-Odkazy ke stažení jsou v [sledovane.txt](sledovane.txt). Jeden odkaz na řádek. Řádky s `#` a prázdné řádky přeskoč. Pořad podle názvu nevyhledávej. Když v souboru není žádný odkaz, zastav se a napiš, že seznam je prázdný.
+Odkazy ke stažení jsou v [sledovane.txt](sledovane.txt). Jeden odkaz na řádek. Řádky s `#` a prázdné řádky přeskoč. Aktivní odkazy jsou pořady s pravidelnými díly. Nepravidelné pořady jsou v tom souboru jen v komentáři, týdenní běh je nebere. Pořad podle názvu nevyhledávej. Když v souboru není žádný odkaz, zastav se a napiš, že seznam je prázdný.
 
 Když uživatel pošle OPML, přepiš `sledovane.txt` adresami z `xmlUrl`. Název pořadu a skupinu nech na řádcích s `#`. Jiné pořady nepřidávej.
 
