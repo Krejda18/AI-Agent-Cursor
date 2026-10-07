@@ -5,39 +5,33 @@ description: >-
   pořadu vezme nejnovější díl, který ještě není zpracovaný a už má celý text,
   a jazykovým modelem z něj česky vytáhne
   finance klubů, hráče ve formě i mimo ni, mladé hráče a nabídky. Nakonec
-  udělá souhrn za Finsko, Norsko, Švédsko a Španělsko. Audio nestahuje. Použij, když
-  uživatel požádá o týdenní průchod, sledované podcasty nebo souhrn zemí.
+  udělá souhrn za Finsko, Norsko, Švédsko a Španělsko. Audio nestahuje. Použij,
+  když uživatel požádá o týdenní průchod, sledované podcasty nebo souhrn zemí.
   Jeden soubor nebo jeden odkaz na díl patří skillu prepis-audio.
 ---
 
 # Týdenní fotbalové podcasty
 
-Postup:
-Kazdy tyden projit sledovane podcasty s odkazy na jejich stazeni
-Udelat z nich transcript:
+Jednou týdně projdi sledované pořady a z hotového textu udělej český výtah. Audio se nestahuje a přepis se na tomto stroji nevytváří.
 
-Abstahovat dulezite informace o:
-Klubech, dobra finacni situace, spatna financni situace
-Hracich kteri hrajou dobre
-Hracich kteri hrajou spatne
-Mlade hrace
-Nabidkach na hrace
+## Postup
 
-## Kdy skill použít
+1. Vezmi adresy feedů ze [sledovane.txt](sledovane.txt). Skupina země je na řádku s `#`.
+2. U každého pořadu vyber jeden díl: nejnovější, který ještě není v [zpracovane.txt](zpracovane.txt) a už má celý text. Hledej 31 dní dozadu. Novější díl bez textu přeskoč a nezapisuj ho.
+3. Z vybraného textu vytáhni jen to, co v něm zaznělo: dobrá a špatná finanční situace klubů, hráči ve formě a mimo ni, mladí hráči, nabídky na hráče.
+4. Ze stejných kartiček udělej souhrn za Finsko, Norsko, Švédsko a Španělsko.
 
-Spusť ho, když uživatel chce týdenní průchod sledovaných podcastů. Jeden přiložený soubor nebo jeden odkaz na díl zpracuj skillem `prepis-audio`, ne tímto.
+Jeden přiložený soubor nebo jeden odkaz na díl zpracuj skillem `prepis-audio`, ne tímto.
 
 ## Seznam
 
-Odkazy ke stažení jsou v [sledovane.txt](sledovane.txt). Jeden odkaz na řádek. Řádky s `#` a prázdné řádky přeskoč. Sledují se pořady s pravidelnými díly. Mezera mezi díly i zpoždění posledního dílu může být až měsíc. Pořad podle názvu nevyhledávej. Když v souboru není žádný odkaz, zastav se a napiš, že seznam je prázdný.
+Jeden odkaz na řádek. Řádky s `#` a prázdné řádky přeskoč. Sledují se pořady s pravidelnými díly. Mezera mezi díly i zpoždění posledního dílu může být až měsíc. Pořad podle názvu nevyhledávej. Když v souboru není žádný odkaz, zastav se a napiš, že seznam je prázdný.
 
 Když uživatel pošle OPML, přepiš `sledovane.txt` adresami z `xmlUrl`. Název pořadu a skupinu nech na řádcích s `#`. Jiné pořady nepřidávej.
 
-Už zpracované díly jsou v [zpracovane.txt](zpracovane.txt), jeden `media_url` na řádek. Ty přeskoč. Řádek tam patří až po výtahu z celého textu.
+V `zpracovane.txt` je jeden `media_url` na řádek. Ty díly přeskoč. Řádek tam dopiš až po výtahu z celého textu. Když text chybí, řádek nepřidávej. Text ani klíč necommituj.
 
-## Text místo audia
-
-Celé audio se nestahuje a faster-whisper se nespouští. U každého pořadu vezmi jeden díl: nejnovější, který ještě není v `zpracovane.txt` a už má celý text. Novější díl bez textu neber a nezapisuj ho, ať ho jde vzít, až přepis bude. Hledej 31 dní dozadu, protože sledovaný pořad může mít poslední díl až měsíc pozadu.
+## Výběr dílu
 
 ```bash
 PREPIS_DIR="<kořen skillu prepis-audio>"
@@ -56,26 +50,24 @@ if [ ! -x "$PYTHON" ]; then PYTHON=python3; fi
 
 Skripty jsou ve skillu `prepis-audio` a v `scripts` tohoto skillu. Když v `PREPIS_DIR` není `.venv`, stačí `python3`.
 
-Skript u dílu zkusí v tomto pořadí:
+Skript hledá hotový text v tomto pořadí:
 
 1. `podcast:transcript` ve feedu, nebo odkaz na `.vtt`, `.srt`, `.ttml` či cestu s `transcript` v popisu dílu.
 2. Stejný odkaz na stránce dílu.
 3. Podscan, jen když je v prostředí `PODSCAN_API_KEY`. Díl se páruje podle RSS a `guid`, případně podle adresy audia. Stáhne se WebVTT. Klíč se nikam nezapisuje.
 
-Jiné cesty u těchto pořadů celý text nedaly. Znovu je nezkoušej a kvůli nim nestahuj audio.
+U severských pořadů už jiné cesty celý text nedaly. Znovu je nezkoušej a kvůli nim nestahuj audio.
 
-- Apple Podcasts má u nejnovějšího dílu všech 11 pořadů prázdné `transcriptInfo`. Soukromý bearer token se nepoužívá.
+- Apple Podcasts má u nejnovějšího dílu severských pořadů prázdné `transcriptInfo`. Soukromý bearer token se nepoužívá.
 - Acast má u dílů pole `transcript`, ale je prázdné.
 - Spotify přepis přes své API nevrací.
 - YouTube má stejný díl u 90MinSvenskan, Studio Allsvenskan a Nordic Football Podcast. Titulky odtud nejdou stáhnout, přehrávač vrací kontrolu proti robotům a prázdný soubor titulků. Rabona, Napit Edellä a deník Fotbollsmorgon stejné video nemají. Video nehledej podle podobného názvu.
 
-`status: saved` je celý text s časy `[mm:ss]` u dílu, který ještě nebyl zpracovaný. Prázdné pole znamená, že v okně 31 dní takový díl není. Díly bez textu skript nevrací a do `zpracovane.txt` se nezapisují. Audio se nedotahuje.
-
-Až z textu vznikne výtah, dopiš `media_url` do `zpracovane.txt`. Když text chybí, řádek nepřidávej. Text ani klíč necommituj.
+`status: saved` je celý text s časy `[mm:ss]` u dílu, který ještě nebyl zpracovaný. Prázdné pole znamená, že v okně 31 dní takový díl není. Díly bez textu skript nevrací. Audio se nedotahuje.
 
 Přepis zůstává v původním jazyce. Jméno, klub, částku a důvod nech jen tehdy, když jsou v textu. Nic nedoplňuj odhadem.
 
-## Výtah jazykovým modelem
+## Výtah
 
 Souhrn dělá jazykový model z celého textu. Model na rozpoznání řeči se na souhrn nepoužívá.
 
@@ -94,7 +86,7 @@ Kartičku zahoď, když v citaci chybí jméno, klub nebo částka, když je to 
 
 Do českého přehledu dej kartičky druhu aktuální a názor panelu. Vzpomínku dej stranou jako starou kariéru. Když díl nemá ani jednu kartičku, napiš „Z tohoto dílu nešel použít výtah.“ Šest prázdných nadpisů nevyplňuj.
 
-Skupiny, které kartičky pokryjí, vypiš pod dílem. U položky uveď pořad, název dílu a čas `mm:ss`.
+Pod díl vypiš jen skupiny, které kartičky pokryjí. U položky uveď pořad, název dílu a čas `mm:ss`.
 
 - **Kluby, dobrá finanční situace.** Řekli, že klub má peníze, vyrovnaný rozpočet, bohatého vlastníka, splacené dluhy nebo prostor nakupovat.
 - **Kluby, špatná finanční situace.** Řekli, že klub má dluhy, problém s finančním fair play, nucený prodej, srážky mezd, insolvenci nebo že na nákup nemá.
@@ -105,9 +97,9 @@ Skupiny, které kartičky pokryjí, vypiš pod dílem. U položky uveď pořad, 
 
 Přestup sám nepřeřazuj do finanční situace klubu. Do financí patří jen výrok o penězích klubu. Údaje jsou z textu přepisu, ne ověřený stav klubu.
 
-## Souhrn za zemi
+## Souhrn zemí
 
-Po výtahu dílů přidej celkový souhrn za Finsko, Norsko, Švédsko a Španělsko. Do souhrnu země patří kartičky z vybraných textů. Skupiny jsou v `sledovane.txt`.
+Po výtahu dílů přidej souhrn za Finsko, Norsko, Švédsko a Španělsko. Do souhrnu země patří kartičky z vybraných textů. Skupiny jsou v `sledovane.txt`.
 
 Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se mluví. Věta o obou zemích patří do obou souhrnů. Stejný klub nebo hráč ať je v jedné skupině jen jednou. Když se pořady liší, nech oba výroky a uveď pořad i díl. Nic nového oproti dílům nepřidávej. Když země nemá vybraný díl, napiš to a skupiny nevyplňuj ze starších zpracovaných dílů.
 
@@ -115,7 +107,7 @@ Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se
 
 - Který díl se vzal: ještě nebyl zpracovaný a má celý text. Když v okně 31 dní takový díl není, napiš to. Novější díl bez textu jen zmiň, že na něj text ještě není.
 - Skupiny, které kartičky pokryjí.
-- Celkový souhrn za Finsko, za Norsko, za Švédsko a za Španělsko.
+- Souhrn za Finsko, za Norsko, za Švédsko a za Španělsko.
 - Nejasnosti.
 - Úplný přepis jen na vyžádání.
 
