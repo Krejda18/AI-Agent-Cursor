@@ -1,6 +1,7 @@
 .venv/
 output/
 *.mp3
+!ukazka-shrnuti.mp3
 *.wav
 *.m4a
 *.ogg
