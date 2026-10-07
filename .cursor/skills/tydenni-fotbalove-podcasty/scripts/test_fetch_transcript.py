@@ -167,6 +167,58 @@ def test_podscan(base: str, tmp: Path) -> None:
     assert not any(path.split("?", 1)[0].endswith(".mp3") for path in Handler.seen), Handler.seen
 
 
+def ready_feed(base: str) -> bytes:
+    return f"""<?xml version="1.0"?>
+<rss xmlns:podcast="https://podcastindex.org/namespace/1.0" version="2.0">
+<channel>
+<item>
+  <title>Ceka</title>
+  <guid>g-ceka</guid>
+  <enclosure url="{base}/ceka.mp3" type="audio/mpeg"/>
+  <pubDate>Tue, 06 Oct 2026 18:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>Hotovy</title>
+  <guid>g-hotovy</guid>
+  <enclosure url="{base}/hotovy.mp3" type="audio/mpeg"/>
+  <pubDate>Tue, 06 Oct 2026 08:00:00 GMT</pubDate>
+  <podcast:transcript url="{base}/hotovy.vtt" type="text/vtt"/>
+</item>
+<item>
+  <title>Volny text</title>
+  <guid>g-volny</guid>
+  <enclosure url="{base}/volny.mp3" type="audio/mpeg"/>
+  <pubDate>Mon, 05 Oct 2026 12:00:00 GMT</pubDate>
+  <podcast:transcript url="{base}/volny.vtt" type="text/vtt"/>
+</item>
+</channel>
+</rss>
+""".encode()
+
+
+def test_ready_only(base: str, tmp: Path) -> None:
+    tmp.mkdir(parents=True, exist_ok=True)
+    processed = tmp / "zpracovane.txt"
+    processed.write_text(f"# hotovo\n{base}/hotovy.mp3\n", encoding="utf-8")
+    now = datetime(2026, 10, 6, tzinfo=timezone.utc)
+    rows = fetch_transcript.fetch_recent_transcripts(
+        f"{base}/ready.xml",
+        tmp / "out",
+        31,
+        allow_private=True,
+        now=now,
+        api_key="",
+        processed_urls=fetch_transcript.load_processed(processed),
+        ready_only=True,
+    )
+    assert len(rows) == 1, rows
+    assert rows[0]["title"] == "Volny text", rows
+    assert rows[0]["status"] == "saved"
+    assert "[04:00] KuPS má peníze" in Path(rows[0]["path"]).read_text(encoding="utf-8")
+    assert not any(path.split("?", 1)[0].endswith(".mp3") for path in Handler.seen), Handler.seen
+    assert not any(path.endswith("hotovy.vtt") for path in Handler.seen)
+
+
 def main() -> None:
     test_text_marks()
     tmp = Path("/tmp/tydenni-transcript-test")
@@ -182,13 +234,18 @@ def main() -> None:
         ),
         "/ze-stranky.vtt": (200, "text/vtt", "WEBVTT\n\n00:03:00.000 --> 00:03:02.000\nmladý hráč\n".encode()),
         "/stary.vtt": (200, "text/vtt", "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nstarý\n".encode()),
+        "/hotovy.vtt": (200, "text/vtt", "WEBVTT\n\n00:01:00.000 --> 00:01:02.000\nuz hotovo\n".encode()),
+        "/volny.vtt": (200, "text/vtt", "WEBVTT\n\n00:04:00.000 --> 00:04:03.000\nKuPS má peníze\n".encode()),
     }
     server, base = serve(pages)
     pages["/feed.xml"] = (200, "application/rss+xml", feed(base))
+    pages["/ready.xml"] = (200, "application/rss+xml", ready_feed(base))
     try:
         test_feed(base, tmp / "a")
         Handler.seen = []
         test_podscan(base, tmp / "b")
+        Handler.seen = []
+        test_ready_only(base, tmp / "c")
     finally:
         server.shutdown()
     print("test_fetch_transcript: v pořádku")

@@ -15,6 +15,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -312,6 +313,36 @@ def podscan_episode_id(
     return None
 
 
+def open_podscan(request: urllib.request.Request, allow_private: bool) -> bytes:
+    opener = urllib.request.build_opener(fetch_audio.SafeRedirectHandler(allow_private))
+    delay = 2
+    last_code = 0
+    for _attempt in range(4):
+        try:
+            with opener.open(request, timeout=60) as response:
+                return fetch_audio.read_capped(response, TEXT_LIMIT)
+        except urllib.error.HTTPError as exc:
+            last_code = exc.code
+            if exc.code == 401:
+                fail(3, "Podscan klíč odmítl. Přepis jsem nestáhl.")
+            if exc.code == 404:
+                return b""
+            if exc.code == 429 and _attempt < 3:
+                try:
+                    exc.read()
+                except OSError:
+                    pass
+                retry_after = exc.headers.get("Retry-After") if exc.headers else None
+                time.sleep(int(retry_after) if retry_after and retry_after.isdigit() else delay)
+                delay *= 2
+                continue
+            fail(3, f"Podscan vrátil chybu {exc.code}. Přepis jsem nestáhl.")
+        except urllib.error.URLError as exc:
+            fail(3, f"Podscan se nepodařilo otevřít: {exc.reason}. Přepis jsem nestáhl.")
+    fail(3, f"Podscan vrátil chybu {last_code}. Přepis jsem nestáhl.")
+    return b""
+
+
 def get_json(url: str, api_key: str, allow_private: bool) -> dict:
     fetch_audio.check_url(url, allow_private)
     request = urllib.request.Request(
@@ -323,18 +354,9 @@ def get_json(url: str, api_key: str, allow_private: bool) -> dict:
         },
         method="GET",
     )
-    opener = urllib.request.build_opener(fetch_audio.SafeRedirectHandler(allow_private))
-    try:
-        with opener.open(request, timeout=60) as response:
-            body = fetch_audio.read_capped(response, TEXT_LIMIT)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 401:
-            fail(3, "Podscan klíč odmítl. Přepis jsem nestáhl.")
-        if exc.code == 404:
-            return {}
-        fail(3, f"Podscan vrátil chybu {exc.code}. Přepis jsem nestáhl.")
-    except urllib.error.URLError as exc:
-        fail(3, f"Podscan se nepodařilo otevřít: {exc.reason}. Přepis jsem nestáhl.")
+    body = open_podscan(request, allow_private)
+    if not body:
+        return {}
     try:
         payload = json.loads(body.decode("utf-8", errors="replace"))
     except json.JSONDecodeError:
@@ -356,16 +378,8 @@ def podscan_vtt(episode_id: str, api_key: str, base: str, allow_private: bool) -
         },
         method="GET",
     )
-    opener = urllib.request.build_opener(fetch_audio.SafeRedirectHandler(allow_private))
-    try:
-        with opener.open(request, timeout=60) as response:
-            return fetch_audio.read_capped(response, TEXT_LIMIT)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 401:
-            fail(3, "Podscan klíč odmítl. Přepis jsem nestáhl.")
-        if exc.code == 404:
-            return b""
-        raise
+    body = open_podscan(request, allow_private)
+    return body
 
 
 def missing(item: dict, reason: str) -> dict:
@@ -383,6 +397,18 @@ def missing(item: dict, reason: str) -> dict:
     }
 
 
+def load_processed(path: Path) -> set[str]:
+    if not path.is_file():
+        return set()
+    found: set[str] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        clean = line.strip()
+        if not clean or clean.startswith("#"):
+            continue
+        found.add(clean)
+    return found
+
+
 def fetch_recent_transcripts(
     url: str,
     output_dir: Path,
@@ -391,6 +417,8 @@ def fetch_recent_transcripts(
     now: datetime | None = None,
     api_key: str | None = None,
     podscan_base: str = PODSCAN_BASE,
+    processed_urls: set[str] | None = None,
+    ready_only: bool = False,
 ) -> list[dict]:
     if days < 1:
         fail(2, "Počet dní musí být aspoň 1.")
@@ -405,10 +433,20 @@ def fetch_recent_transcripts(
     items = parse_items(root, final)
     if not items:
         fail(2, "Feed neobsahuje díl. Textový přepis jsem nestáhl.")
-    chosen, _selection = fetch_audio.recent_feed_items(items, days, now or datetime.now(timezone.utc))
+    moment = now or datetime.now(timezone.utc)
+    chosen, _selection = fetch_audio.recent_feed_items(items, days, moment)
+    if ready_only:
+        chosen = sorted(
+            chosen,
+            key=lambda item: item.get("published") or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+    done = processed_urls or set()
     key = api_key if api_key is not None else os.environ.get("PODSCAN_API_KEY") or ""
     results: list[dict] = []
     for item in chosen:
+        if ready_only and item.get("enclosure") in done:
+            continue
         saved = None
         for transcript_url, source in item.get("transcripts") or []:
             if not transcript_url or is_audio_url(transcript_url):
@@ -463,12 +501,16 @@ def fetch_recent_transcripts(
             except (urllib.error.URLError, OSError, ValueError):
                 saved = None
         if saved is None:
+            if ready_only:
+                continue
             if key:
                 reason = "Celý textový přepis se nepodařilo získat. Audio jsem nestahoval."
             else:
                 reason = "U dílu není veřejný textový přepis a PODSCAN_API_KEY chybí. Audio jsem nestahoval."
             saved = missing(item, reason)
         results.append(saved)
+        if ready_only:
+            break
     return results
 
 
@@ -477,8 +519,21 @@ def main() -> None:
     parser.add_argument("url")
     parser.add_argument("--output-dir", default="output/transcripts")
     parser.add_argument("--recent-days", type=int, default=7)
+    parser.add_argument("--processed-file", default="")
+    parser.add_argument(
+        "--ready-only",
+        action="store_true",
+        help="Vezmi jen nejnovější díl, který ještě není zpracovaný a má celý text.",
+    )
     args = parser.parse_args()
-    result = fetch_recent_transcripts(args.url, Path(args.output_dir), args.recent_days)
+    processed = load_processed(Path(args.processed_file)) if args.processed_file else set()
+    result = fetch_recent_transcripts(
+        args.url,
+        Path(args.output_dir),
+        args.recent_days,
+        processed_urls=processed,
+        ready_only=args.ready_only,
+    )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
