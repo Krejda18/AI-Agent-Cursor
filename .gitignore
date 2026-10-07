@@ -8,8 +8,11 @@ output/
 *.webm
 *.opus
 *.aac
+<<<<<<< HEAD
 *.m4b
 *.mp4
+=======
+>>>>>>> origin/main
 __pycache__/
 .pytest_cache/
 *.pyc
