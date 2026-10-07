@@ -3,8 +3,8 @@ name: tydenni-fotbalove-podcasty
 description: >-
   Jednou týdně projde sledované fotbalové podcasty z sledovane.txt. U každého
   pořadu vezme nejnovější díl, který ještě není zpracovaný a už má celý text,
-  a jazykovým modelem z něj česky vytáhne
-  finance klubů, hráče ve formě i mimo ni, mladé hráče a nabídky. Nakonec
+  a jazykovým modelem z něj udělá český scoutingový přehled: finance klubů,
+  výkony hráčů, mladé hráče, přestupy a další situace v klubu. Nakonec
   udělá souhrn za Finsko, Norsko, Švédsko a Španělsko. Audio nestahuje. Použij,
   když uživatel požádá o týdenní průchod, sledované podcasty nebo souhrn zemí.
   Jeden soubor nebo jeden odkaz na díl patří skillu prepis-audio.
@@ -18,8 +18,8 @@ Jednou týdně projdi sledované pořady a z hotového textu udělej český vý
 
 1. Vezmi adresy feedů ze [sledovane.txt](sledovane.txt). Skupina země je na řádku s `#`.
 2. U každého pořadu vyber jeden díl: nejnovější, který ještě není v [zpracovane.txt](zpracovane.txt) a už má celý text. Hledej 31 dní dozadu. Novější díl bez textu přeskoč a nezapisuj ho.
-3. Z vybraného textu vytáhni jen to, co v něm zaznělo: dobrá a špatná finanční situace klubů, hráči ve formě a mimo ni, mladí hráči, nabídky na hráče.
-4. Ze stejných kartiček udělej souhrn za Finsko, Norsko, Švédsko a Španělsko.
+3. Z vybraného textu udělej stručný scoutingový přehled v češtině.
+4. Ze stejných přehledů udělej souhrn za Finsko, Norsko, Švédsko a Španělsko.
 
 Jeden přiložený soubor nebo jeden odkaz na díl zpracuj skillem `prepis-audio`, ne tímto.
 
@@ -69,44 +69,36 @@ Přepis zůstává v původním jazyce. Jméno, klub, částku a důvod nech jen
 
 ## Výtah
 
-Souhrn dělá jazykový model z celého textu. Model na rozpoznání řeči se na souhrn nepoužívá.
+Z každého vybraného dílu vytvoř stručný scoutingový přehled v češtině. Dělá ho jazykový model z celého textu. Model na rozpoznání řeči se na přehled nepoužívá.
 
-Nejdřív díl zařaď jednou větou: aktuální kolo, rozhovor o kariéře, reprezentace, nebo jiný pořad. Rozhovor o minulosti není zpráva o tomto týdnu.
+Na začátku uveď pořad, název epizody, datum a jednou větou její hlavní téma. Rozliš aktuální dění od rozhovoru o minulosti.
 
-Pak projdi text po blocích. Z každého bloku ber jen kartičku, u které zůstane citace:
+Potom vypiš pouze relevantní informace v těchto oblastech:
 
-- čas `mm:ss`
-- skupina: finance-dobré, finance-špatné, forma-dobrá, forma-špatná, mladý, nabídka
-- klub nebo hráč tak, jak je v citaci
-- citace v původním jazyce, jedna až dvě věty
-- česky jedna věta
-- druh: aktuální, vzpomínka, názor panelu, nejisté
+- **Finance klubů.** Finanční možnosti, problémy, potřeba prodávat nebo prostor pro posily.
+- **Výkony hráčů.** Dobrá či špatná forma, konkrétní výkony, změna role nebo místa v sestavě.
+- **Mladí hráči.** Talenti, kteří dostávají příležitost nebo na sebe upozorňují.
+- **Přestupy a dostupnost.** Zájem, nabídky, dokončené přestupy a možné odchody.
+- **Další důležité informace.** Zranění, tresty, vztahy s trenérem nebo situace v klubu.
 
-Kartičku zahoď, když v citaci chybí jméno, klub nebo částka, když je to reklama nebo sázka, nebo když je jméno zkomolené a v textu se podruhé neopakuje. U severského pořadu zahoď i cizí ligu bez vazby na severský klub. U pořadu ze skupiny Španělsko nech španělskou ligu a španělský klub. Nejisté jméno nech `[nejisté]` a neopravuj ho podle toho, koho znáš.
+U každé informace napiš, koho se týká, co zaznělo a jaký to může mít význam pro scouting. Připoj čas v epizodě `mm:ss`, aby šel výrok dohledat. Případný scoutingový závěr jasně odděl od toho, co řekli v podcastu.
 
-Do českého přehledu dej kartičky druhu aktuální a názor panelu. Vzpomínku dej stranou jako starou kariéru. Když díl nemá ani jednu kartičku, napiš „Z tohoto dílu nešel použít výtah.“ Šest prázdných nadpisů nevyplňuj.
+Relevantní je liga a klub ze skupiny pořadu ve `sledovane.txt`. U severského pořadu nech cizí ligu jen s vazbou na severský klub nebo hráče. U pořadu ze skupiny Španělsko nech španělskou ligu a španělský klub. Vynech reklamy, sázky, opakování a obecné řeči. Prázdné oblasti nezobrazuj. Když díl nemá ani jednu informaci, napiš „Z tohoto dílu nešel použít výtah.“
 
-Pod díl vypiš jen skupiny, které kartičky pokryjí. U položky uveď pořad, název dílu a čas `mm:ss`.
+Nevymýšlej jména, částky ani souvislosti. Nejisté jméno označ `[nejisté]` a neopravuj ho podle toho, koho znáš. Názor moderátora prezentuj jako názor, přestupový zájem jako zájem a vzpomínku jako historickou informaci. Přepis není nezávislé ověření.
 
-- **Kluby, dobrá finanční situace.** Řekli, že klub má peníze, vyrovnaný rozpočet, bohatého vlastníka, splacené dluhy nebo prostor nakupovat.
-- **Kluby, špatná finanční situace.** Řekli, že klub má dluhy, problém s finančním fair play, nucený prodej, srážky mezd, insolvenci nebo že na nákup nemá.
-- **Hráči, kteří hrají dobře.** Jméno a důvod: forma, zápas, góly, přihrávky, nasazení.
-- **Hráči, kteří hrají špatně.** Jméno a důvod: forma, chyba, zranění, mimo sestavu, trest.
-- **Mladí hráči.** Koho označili za mladého, talent, odchovance nebo dorostence a proč o něm mluví.
-- **Nabídky na hráče.** Kdo nabízí, na koho, z jakého klubu a kam. Částku uveď jen když zazněla. Rozliš nabídku, zájem a hotový přestup.
-
-Přestup sám nepřeřazuj do finanční situace klubu. Do financí patří jen výrok o penězích klubu. Údaje jsou z textu přepisu, ne ověřený stav klubu.
+Citace v původním jazyce uchovej jako podklad. Do hlavního přehledu ji dej jen tehdy, když přesné znění pomáhá pochopit důležitou informaci.
 
 ## Souhrn zemí
 
-Po výtahu dílů přidej souhrn za Finsko, Norsko, Švédsko a Španělsko. Do souhrnu země patří kartičky z vybraných textů. Skupiny jsou v `sledovane.txt`.
+Po přehledech dílů přidej souhrn za Finsko, Norsko, Švédsko a Španělsko. Do souhrnu země patří informace z vybraných textů. Skupiny jsou v `sledovane.txt`. Stejné oblasti jako u dílu. Prázdnou oblast nezobrazuj.
 
-Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se mluví. Věta o obou zemích patří do obou souhrnů. Stejný klub nebo hráč ať je v jedné skupině jen jednou. Když se pořady liší, nech oba výroky a uveď pořad i díl. Nic nového oproti dílům nepřidávej. Když země nemá vybraný díl, napiš to a skupiny nevyplňuj ze starších zpracovaných dílů.
+Pořad ve skupině „Norsko a Švédsko“ rozděl podle toho, o které zemi se mluví. Věta o obou zemích patří do obou souhrnů. Stejný klub nebo hráč ať je v jedné skupině jen jednou. Když se pořady liší, nech oba výroky a uveď pořad i díl. Nic nového oproti dílům nepřidávej. Scoutingový závěr i tady odděl od toho, co řekli v podcastu. Když země nemá vybraný díl, napiš to a souhrn nevyplňuj ze starších zpracovaných dílů.
 
 ## Výstup
 
 - Který díl se vzal: ještě nebyl zpracovaný a má celý text. Když v okně 31 dní takový díl není, napiš to. Novější díl bez textu jen zmiň, že na něj text ještě není.
-- Skupiny, které kartičky pokryjí.
+- Scoutingový přehled dílu.
 - Souhrn za Finsko, za Norsko, za Švédsko a za Španělsko.
 - Nejasnosti.
 - Úplný přepis jen na vyžádání.
