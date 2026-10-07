@@ -131,6 +131,14 @@ def clock():
     return monotonic, sleep, sleeps
 
 
+def allow_lookup() -> None:
+    Handler.routes[("GET", "/v1/lookup")] = (
+        200,
+        b'{"show":{"title":"Show"},"episode":{"audio_url":"https://cdn.example/audio.mp3"}}',
+        {},
+    )
+
+
 def completed(text: str = "Castellón vede.") -> dict:
     return {
         "id": "job-12345678",
@@ -153,6 +161,7 @@ def test_segments() -> None:
 
 
 def test_latest(base: str, tmp: Path) -> None:
+    allow_lookup()
     Handler.routes[("POST", "/v1/transcripts")] = (202, b'{"id":"job-12345678","status":"processing"}', {})
     Handler.routes[("GET", "/v1/transcripts/job-12345678")] = (
         200,
@@ -176,7 +185,12 @@ def test_latest(base: str, tmp: Path) -> None:
     assert row["source"] == "podscript"
     assert row["podscript_source"] == "asr"
     assert row["language"] == "es"
-    assert "[01:05] Castellón vede." in Path(row["path"]).read_text(encoding="utf-8")
+    assert row["downloadable"] is True
+    assert Path(row["path"]).name.startswith("2026-10-06-novy-")
+    stored = Path(row["path"]).read_text(encoding="utf-8")
+    assert "[01:05] Castellón vede." in stored
+    assert "test-token" not in stored
+    assert any(path.split("?", 1)[0] == "/v1/lookup" for method, path in Handler.seen if method == "GET")
     assert len(Handler.posts) == 1, Handler.posts
     sent = json.loads(Handler.posts[0].decode())
     assert sent["url"] == f"{base}/feed.xml"
@@ -237,6 +251,7 @@ def test_resume_job(base: str, tmp: Path) -> None:
 
 
 def test_processing_keeps_job(base: str, tmp: Path) -> None:
+    allow_lookup()
     Handler.routes[("POST", "/v1/transcripts")] = (202, b'{"id":"job-12345678","status":"processing"}', {})
     row = fetch_transcript.fetch_show_transcript(
         f"{base}/feed.xml",
@@ -258,6 +273,7 @@ def test_processing_keeps_job(base: str, tmp: Path) -> None:
 
 
 def test_title_when_guid_missing(base: str, tmp: Path) -> None:
+    allow_lookup()
     Handler.routes[("POST", "/v1/transcripts")] = (200, json.dumps(completed("podle názvu")).encode(), {})
     row = fetch_transcript.fetch_show_transcript(
         f"{base}/nazev.xml",
@@ -274,6 +290,7 @@ def test_title_when_guid_missing(base: str, tmp: Path) -> None:
 
 
 def test_rate_limit_does_not_wait(base: str, tmp: Path) -> None:
+    allow_lookup()
     Handler.routes[("POST", "/v1/transcripts")] = (429, b'{"message":"slow"}', {"Retry-After": "36000"})
     sleeps: list[float] = []
     started = time.monotonic()
@@ -293,6 +310,36 @@ def test_rate_limit_does_not_wait(base: str, tmp: Path) -> None:
     assert time.monotonic() - started < 3
 
 
+def test_lookup_blocks_transcript(base: str, tmp: Path) -> None:
+    Handler.routes[("GET", "/v1/lookup")] = (404, b'{"message":"missing"}', {})
+    row = fetch_transcript.fetch_show_transcript(
+        f"{base}/feed.xml",
+        tmp,
+        allow_private=True,
+        api_key="test-token",
+        podscript_base=base,
+    )
+    assert row["status"] == "unavailable", row
+    assert row["downloadable"] is False
+    assert row["path"] is None
+    assert Handler.posts == []
+    assert "nenašlo" in row["reason"]
+
+
+def test_lookup_without_audio(base: str, tmp: Path) -> None:
+    Handler.routes[("GET", "/v1/lookup")] = (422, b'{"message":"no audio"}', {})
+    row = fetch_transcript.fetch_show_transcript(
+        f"{base}/feed.xml",
+        tmp,
+        allow_private=True,
+        api_key="test-token",
+        podscript_base=base,
+    )
+    assert row["status"] == "unavailable", row
+    assert Handler.posts == []
+    assert "veřejné audio" in row["reason"]
+
+
 def test_unauthorized(base: str, tmp: Path) -> None:
     row = fetch_transcript.fetch_show_transcript(
         f"{base}/feed.xml",
@@ -301,7 +348,9 @@ def test_unauthorized(base: str, tmp: Path) -> None:
         api_key="psk_live_tajny",
         podscript_base=base,
     )
-    assert row["status"] == "missing", row
+    assert row["status"] == "unavailable", row
+    assert row["downloadable"] is False
+    assert Handler.posts == []
     assert "psk_live_tajny" not in json.dumps(row)
     assert "klíč odmítl" in row["reason"]
 
@@ -351,6 +400,14 @@ def main() -> None:
         test_rate_limit_does_not_wait(base, tmp / "f")
         Handler.seen = []
         Handler.posts = []
+        Handler.routes.pop(("GET", "/v1/lookup"), None)
+        test_lookup_blocks_transcript(base, tmp / "h")
+        Handler.seen = []
+        Handler.posts = []
+        test_lookup_without_audio(base, tmp / "i")
+        Handler.seen = []
+        Handler.posts = []
+        Handler.routes.pop(("GET", "/v1/lookup"), None)
         test_unauthorized(base, tmp / "g")
     finally:
         server.shutdown()

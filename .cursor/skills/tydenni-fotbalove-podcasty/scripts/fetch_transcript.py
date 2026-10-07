@@ -91,11 +91,21 @@ def transcript_body(payload: dict) -> str:
     return ""
 
 
+def slug(value: str) -> str:
+    text = value.strip().lower()
+    text = re.sub(r"\s+", "-", text)
+    text = re.sub(r"[^\w\-]+", "", text, flags=re.UNICODE)
+    text = re.sub(r"-{2,}", "-", text).strip("-_")
+    return text[:48] or "dil"
+
+
 def file_for(item: dict, output_dir: Path) -> Path:
     identity = item.get("guid") or item.get("enclosure") or item.get("title") or "dil"
-    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:8]
+    published = item.get("published")
+    day = published.strftime("%Y-%m-%d") if isinstance(published, datetime) else "bez-data"
     output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir / f"{digest}.txt"
+    return output_dir / f"{day}-{slug(str(item.get('title') or 'dil'))}-{digest}.txt"
 
 
 def load_processed(path: Path) -> set[str]:
@@ -149,6 +159,7 @@ def episode_result(item: dict, **extra: object) -> dict:
         "job_id": None,
         "path": None,
         "status": "missing",
+        "downloadable": None,
         "reason": None,
     }
     result.update(extra)
@@ -258,6 +269,40 @@ def request_json(
     return 0, None
 
 
+def lookup_url(base: str, feed_url: str) -> str:
+    query = urllib.parse.urlencode({"url": feed_url})
+    return f"{base.rstrip('/')}/v1/lookup?{query}"
+
+
+def explicitly_without_audio(payload: dict) -> bool:
+    for key in ("has_audio", "has_public_audio", "downloadable"):
+        if payload.get(key) is False:
+            return True
+    episode = payload.get("episode")
+    if isinstance(episode, dict):
+        if episode.get("has_audio") is False or episode.get("has_public_audio") is False:
+            return True
+        if "audio_url" in episode and not episode.get("audio_url"):
+            return True
+    if "audio_url" in payload and not payload.get("audio_url"):
+        return True
+    return False
+
+
+def lookup_block_reason(status: int, payload: dict | None) -> str | None:
+    if status == 404:
+        return "PodscriptAPI tento podcast nenašlo. Přepis jsem nespustil."
+    if status == 422:
+        return "Podcast přes PodscriptAPI nemá veřejné audio. Přepis jsem nespustil."
+    if status != 200 or payload is None:
+        if status in {200, 202}:
+            return "PodscriptAPI nevrátilo JSON. Přepis jsem nespustil."
+        return reason_for_status(status)
+    if explicitly_without_audio(payload):
+        return "Podcast přes PodscriptAPI nemá veřejné audio. Přepis jsem nespustil."
+    return None
+
+
 def start_payload(feed_url: str, item: dict) -> dict:
     payload: dict = {"url": feed_url}
     if item.get("guid"):
@@ -314,7 +359,19 @@ def save_completed(item: dict, payload: dict, output_dir: Path) -> dict:
             reason="Přepis z PodscriptAPI je prázdný. Shrnutí z něj nedělej.",
         )
     path = file_for(item, output_dir)
-    path.write_text(text, encoding="utf-8")
+    published = item.get("published")
+    when = published.isoformat() if isinstance(published, datetime) else ""
+    header = "\n".join(
+        [
+            f"Díl: {item.get('title') or ''}",
+            f"Guid: {item.get('guid') or ''}",
+            f"Audio: {item.get('enclosure') or ''}",
+            f"Datum: {when}",
+            f"Zdroj: podscript {payload.get('source') or ''} {payload.get('language') or ''}".rstrip(),
+            "",
+        ]
+    )
+    path.write_text(header + text, encoding="utf-8")
     return episode_result(
         item,
         podscript_source=payload.get("source"),
@@ -322,6 +379,7 @@ def save_completed(item: dict, payload: dict, output_dir: Path) -> dict:
         job_id=job_id,
         path=str(path),
         status="saved",
+        downloadable=True,
         reason=None,
     )
 
@@ -406,6 +464,18 @@ def fetch_show_transcript(
                 save_jobs(jobs_file, jobs)
             return saved
 
+    lookup_status, lookup_payload = request_json(
+        "GET",
+        lookup_url(base, final),
+        key,
+        allow_private,
+        None,
+        sleep,
+    )
+    blocked = lookup_block_reason(lookup_status, lookup_payload)
+    if blocked:
+        return episode_result(item, status="unavailable", downloadable=False, reason=blocked)
+
     status, payload = request_json(
         "POST",
         f"{base}/v1/transcripts",
@@ -458,7 +528,10 @@ def fetch_show_transcript(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Stáhne přepis nejnovějšího dílu přes PodscriptAPI. Audio nestahuje.")
     parser.add_argument("url")
-    parser.add_argument("--output-dir", default="output/transcripts")
+    parser.add_argument(
+        "--output-dir",
+        default=str(Path(__file__).resolve().parents[1] / "texty"),
+    )
     parser.add_argument("--processed-file", default="")
     parser.add_argument("--jobs-file", default="")
     args = parser.parse_args()

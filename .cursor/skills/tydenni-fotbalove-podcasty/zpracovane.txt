@@ -1,5 +1,6 @@
 # Už zpracované díly. Jeden media_url na řádek.
-# Řádek přibude až po českém shrnutí. Díl bez přepisu sem nepatří.
+# Řádek přibude až po uložení českého souhrnu, a jen když text dílu leží v texty/.
+# Díl, který přes PodscriptAPI nešel stáhnout, sem nepatří.
 # Seznam z 29. 9.–6. 10. 2026 byl smazaný: šlo o díly bez výtahu, část z nich text ještě neměla.
 # Výtah 7. 10. 2026.
 https://mcdn.podbean.com/mf/web/iu6m6zz5ijxtfwct/FFS_Pod_-_Nationas_League_Veikkausliiga_Splits6qi19.mp3
